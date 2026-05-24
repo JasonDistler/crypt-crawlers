@@ -28,8 +28,16 @@ export function DungeonHud() {
     function onKey(e: KeyboardEvent) {
       const st = useRunStore.getState();
       if (st.mode !== 'dungeon' || st.isMoving) return;
-      if (e.repeat) return;
       const key = e.key.toLowerCase();
+      const isMove =
+        key === 'w' || e.key === 'ArrowUp' ||
+        key === 's' || e.key === 'ArrowDown' ||
+        key === 'q' || key === 'e' ||
+        key === 'a' || e.key === 'ArrowLeft' ||
+        key === 'd' || e.key === 'ArrowRight';
+      // Allow held-key auto-repeat for movement so walking down a long hall
+      // feels fluid. Interact / menu keys stay single-shot below.
+      if (!isMove && e.repeat) return;
       if (key === 'w' || e.key === 'ArrowUp') st.tryStepForward();
       else if (key === 's' || e.key === 'ArrowDown') st.tryStepBackward();
       else if (key === 'q') st.tryStrafeLeft();

@@ -71,7 +71,9 @@ function CameraRig() {
   }, [px, py, facing]);
 
   useFrame((_, dt) => {
-    const speed = 10;
+    // Higher speed = snappier movement (each cell-step converges in
+    // ~90ms at 60fps instead of ~200ms).
+    const speed = 22;
     const cur = current.current;
     const tgt = target.current;
     const lerp = Math.min(1, dt * speed);
@@ -85,7 +87,9 @@ function CameraRig() {
       const dx = Math.abs(tgt.x - cur.x);
       const dz = Math.abs(tgt.z - cur.z);
       const dy = Math.abs(tgt.yaw - cur.yaw);
-      if (dx < 0.01 && dz < 0.01 && dy < 0.01) {
+      // Release the input lock a little earlier so the next held-key
+      // repeat can fire seamlessly without a perceptible stutter.
+      if (dx < 0.04 && dz < 0.04 && dy < 0.04) {
         setMoving(false);
       }
     }

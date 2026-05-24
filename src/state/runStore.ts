@@ -613,16 +613,16 @@ function stepRelative(
   set({ px: nx, py: ny, isMoving: true });
 
   // Trigger encounter / interactions a moment after move starts so the
-  // camera tween can play. The 3D component will turn off `isMoving` when
-  // its animation completes; we use a fallback timeout in case it doesn't.
+  // camera tween can play. With the snappier 22-unit lerp, a step
+  // converges in ~90ms, so 140ms is enough to land before combat fades in.
   if (cell.kind === 'encounter' && !cell.cleared && cell.encounterId) {
     const isElite = !!cell.isElite;
     setTimeout(
       () => useRunStore.getState()._enterCombat(cell.encounterId!, false, nx, ny, isElite),
-      250,
+      140,
     );
   } else if (cell.kind === 'boss' && !cell.cleared && cell.encounterId) {
-    setTimeout(() => useRunStore.getState()._enterCombat(cell.encounterId!, true, nx, ny), 250);
+    setTimeout(() => useRunStore.getState()._enterCombat(cell.encounterId!, true, nx, ny), 140);
   } else if (cell.kind === 'hazard' && !cell.cleared) {
     // Spike trap: damage on step, then disarmed for the rest of the run.
     const floor = s.map.floor;
