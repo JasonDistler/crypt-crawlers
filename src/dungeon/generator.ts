@@ -179,10 +179,12 @@ export function generateFloor(opts: {
   // ---------- Item placement ----------
   // Items per room scale with room size: capacity = floor(area / 4), min 1.
   // Larger rooms naturally hold more loot/foes; smaller rooms stay sparse.
-  const encounterCount = 4 + Math.min(opts.floor, 3);
-  const chestCount = 2 + Math.min(opts.floor, 2);
-  const eliteCount = Math.max(0, opts.floor - 1);
-  const shrineCount = 1 + (opts.floor >= 3 ? 1 : 0);
+  // Scaling: keep early floors sparse, ramp up density across the 10-floor
+  // run so the final crypts feel packed.
+  const encounterCount = 4 + Math.min(opts.floor, 8);          // F1: 5, F10: 12
+  const chestCount = 2 + Math.min(opts.floor, 4);              // F1: 3, F10: 6
+  const eliteCount = Math.min(5, Math.max(0, opts.floor - 1)); // F1: 0, F6+: 5
+  const shrineCount = 1 + Math.floor((opts.floor - 1) / 3);    // F1-3: 1, F4-6: 2, F7-9: 3, F10: 4
 
   type PlaceableItem = { type: 'elite' | 'encounter' | 'chest' | 'shrine' };
   const itemQueue: PlaceableItem[] = [

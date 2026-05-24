@@ -557,7 +557,7 @@ export const useRunStore = create<RunState>((set, get) => ({
     const remaining = remainingFoes(s.map);
     if (remaining.encounters > 0 || remaining.bossAlive) return;
     const nextFloor = s.map.floor + 1;
-    if (nextFloor > 3) {
+    if (nextFloor > 10) {
       // Victory!
       const meta = useMetaStore.getState();
       meta.addXp(s.xp);
@@ -626,7 +626,7 @@ function stepRelative(
   } else if (cell.kind === 'hazard' && !cell.cleared) {
     // Spike trap: damage on step, then disarmed for the rest of the run.
     const floor = s.map.floor;
-    const damage = 4 + floor * 2 + Math.floor(Math.random() * 3); // 6-9 on F1, 10-13 on F3
+    const damage = 4 + floor * 2 + Math.floor(Math.random() * 3); // 6-9 on F1, ~24-27 on F10
     cell.cleared = true;
     const newHp = Math.max(0, s.hp - damage);
     sfx.defeat(); // sharp metallic-y clank stands in for "trap snap"

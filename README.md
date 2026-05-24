@@ -53,8 +53,26 @@ Step on red glyphs to trigger an encounter. In combat:
 5. Hit **End Turn** when you're ready. Enemies attack; bleed / burn ticks at
    end-of-round.
 
-Defeat the floor boss, then walk to the **shovel** and dig deeper. The Crypt
-has 3 floors plus a final boss.
+Defeat the floor boss and clear every encounter, then step into the **portal**
+to descend. The Crypt is **10 floors deep**, each with its own theme, boss,
+and roster:
+
+| # | Floor | Boss |
+|--:|-------|------|
+| 1 | The Catacombs | Vampire Lord |
+| 2 | The Flooded Crypt | Necromancer |
+| 3 | The Throne Hall | Ancient Lich |
+| 4 | The Forsaken Library | The Bound Tome |
+| 5 | The Mushroom Grotto | The Spore Mother |
+| 6 | The Iron Foundry | The Iron Tyrant |
+| 7 | The Frostbitten Mausoleum | The Frost Wyrm |
+| 8 | The Obsidian Sanctum | The Obsidian Maw |
+| 9 | The Astral Plane | The Astral Warden |
+| 10 | The Throne of Eternity | The Eternity King |
+
+Each floor has its own palette, fog, lighting, torch color, and dungeon
+textures. Encounter density, elite count, and shrine count all scale with
+depth.
 
 ## Architecture
 
@@ -90,11 +108,24 @@ All six phases of the plan landed:
 1. **Walking sim** — 3D first-person grid dungeon with R/F + grid movement
 2. **Combat core** — mana chain resolver + card hand UI
 3. **Loop wired up** — encounters → combat → reward → dungeon
-4. **Content & rewards** — procgen floors, chests, ~25 cards, reward picker, shovel
-5. **Bosses & polish** — 3 unique bosses with multi-intent cycles, status effects,
-   framer-motion card juice, procedural SFX
+4. **Content & rewards** — procgen floors, chests, ~25 cards, reward picker, portals
+5. **Bosses & polish** — 10 unique bosses with multi-intent cycles, status effects,
+   framer-motion card juice, procedural SFX, screen shake, floating numbers
 6. **Meta & evolutions** — `localStorage` meta store, multiple crawlers with
    unique decks/passives, evolution system (gem chests upgrade cards), Codex screen
+
+## Art & visuals
+
+- **Procedural D&D-style portraits.** Every enemy, boss, and crawler is drawn
+  to a canvas with shapes + glowing accents — no sprite sheets, no external
+  art.
+- **MTG-style cards.** Cards have title bars, mana-cost pips, painted art
+  boxes, type lines, rules + flavor text, and stat corners. Color-coded by
+  type (red attacks, white defends, blue draws, green heals, black hexes,
+  silver artifacts).
+- **10 themed floors.** Each floor has bespoke wall/floor/ceiling textures,
+  fog, ambient/hemisphere lighting, and torch colors — from candle-lit
+  catacombs to a starlit Astral Plane.
 
 ## Credits
 
