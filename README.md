@@ -22,9 +22,20 @@ Double-click `start.bat` (or run it from `cmd`/PowerShell). The script:
 1. Verifies Node.js + npm are on PATH.
 2. Runs `npm install` automatically if `node_modules` is missing.
 3. Scans TCP ports 5173..5200 and picks the first one that isn't listening.
-4. Launches the Vite dev server on that port and prints the URL.
+4. Prints every LAN IPv4 address so you can play from any phone, tablet, or
+   PC on the same Wi-Fi: `http://<your-LAN-IP>:<port>/`.
+5. Asks if you want to expose the game to the public internet via
+   `npx localtunnel`. Answering **Y** opens a second window that prints a
+   `https://<...>.loca.lt` URL anyone in the world can open — no router
+   port-forwarding required. Press Ctrl-C in that tunnel window to stop
+   sharing.
+6. Launches the Vite dev server bound to `0.0.0.0` so all of the above
+   addresses work simultaneously.
 
-Press Ctrl-C in the window to stop the server.
+Press Ctrl-C in the main window to stop the server. If you'd rather use
+port forwarding on your router instead of a tunnel, forward TCP traffic
+to your machine's LAN IP and share `http://<your-WAN-IP>:<port>/` (look up
+your public IP at <https://ifconfig.me>).
 
 ## Other scripts
 
