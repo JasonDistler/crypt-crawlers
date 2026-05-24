@@ -15,6 +15,17 @@ npm run dev
 
 Open <http://localhost:5173>.
 
+### Windows quick-start
+
+Double-click `start.bat` (or run it from `cmd`/PowerShell). The script:
+
+1. Verifies Node.js + npm are on PATH.
+2. Runs `npm install` automatically if `node_modules` is missing.
+3. Scans TCP ports 5173..5200 and picks the first one that isn't listening.
+4. Launches the Vite dev server on that port and prints the URL.
+
+Press Ctrl-C in the window to stop the server.
+
 ## Other scripts
 
 ```bash
