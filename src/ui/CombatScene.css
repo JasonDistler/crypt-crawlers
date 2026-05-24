@@ -1,0 +1,324 @@
+.combat-scene {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: 1fr auto auto auto;
+  background: linear-gradient(180deg, #0a0610 0%, #1a0e1c 100%);
+  overflow: hidden;
+}
+
+.combat-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(198, 59, 59, 0.12) 0%, transparent 50%),
+    radial-gradient(circle at 20% 80%, rgba(93, 179, 255, 0.06) 0%, transparent 40%);
+  pointer-events: none;
+}
+
+.combat-elite-banner {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 22px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.28em;
+  color: #1a0f0a;
+  background: linear-gradient(180deg, #f0c14a, #8a5a14);
+  border: 1px solid #ffe09c;
+  border-radius: 4px;
+  box-shadow: 0 0 18px rgba(232, 196, 108, 0.6);
+  z-index: 10;
+  text-shadow: 0 1px 0 rgba(255, 224, 156, 0.5);
+}
+
+.combat-top {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 32px 24px 8px;
+  min-height: 220px;
+}
+
+.combat-log {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 280px;
+  background: rgba(10,5,12,0.7);
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-size: 11px;
+  color: var(--ink-dim);
+  pointer-events: none;
+  max-height: 140px;
+  overflow: hidden;
+}
+
+.combat-log-line {
+  line-height: 1.4;
+  padding: 1px 0;
+}
+
+.combat-chain-area {
+  position: relative;
+  background: rgba(10,5,12,0.5);
+  border-top: 1px solid var(--panel-border);
+  border-bottom: 1px solid var(--panel-border);
+  padding: 12px 24px 16px;
+}
+
+.combat-chain-header {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.combat-chain-mult {
+  color: var(--accent);
+  font-size: 16px;
+  font-weight: bold;
+  transition: color 0.25s ease, text-shadow 0.25s ease;
+}
+
+.combat-chain-tier-std {
+  color: #ffce6c;
+  text-shadow: 0 0 8px rgba(255, 206, 108, 0.5);
+}
+
+.combat-chain-tier-big {
+  color: #ff8e3c;
+  font-size: 19px;
+  text-shadow: 0 0 10px rgba(255, 142, 60, 0.7);
+}
+
+.combat-chain-tier-mega {
+  color: #ff4a6e;
+  font-size: 22px;
+  text-shadow: 0 0 12px rgba(255, 74, 110, 0.9), 0 0 24px rgba(255, 74, 110, 0.5);
+  animation: chainMegaPulse 0.7s ease-in-out infinite alternate;
+}
+
+@keyframes chainMegaPulse {
+  from { transform: scale(1); }
+  to { transform: scale(1.08); }
+}
+
+.combat-chain-dmg {
+  color: var(--accent-2);
+  font-size: 13px;
+}
+
+.combat-chain-callout {
+  display: inline-block;
+  padding: 2px 10px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  border-radius: 4px;
+  margin-left: 4px;
+  font-size: 14px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  user-select: none;
+}
+
+.combat-chain-callout-std {
+  background: linear-gradient(180deg, #d49a3c, #8a5a14);
+  color: #1a0f0a;
+  border: 1px solid #ffce6c;
+}
+
+.combat-chain-callout-big {
+  background: linear-gradient(180deg, #ff8e3c, #a4421a);
+  color: #1a0a08;
+  border: 1px solid #ffce8a;
+  box-shadow: 0 0 12px rgba(255, 142, 60, 0.6);
+}
+
+.combat-chain-callout-mega {
+  background: linear-gradient(180deg, #ff4a6e, #6a1438);
+  color: #fff0f3;
+  border: 1px solid #ff8aa6;
+  font-size: 16px;
+  box-shadow: 0 0 16px rgba(255, 74, 110, 0.7);
+}
+
+.combat-chain-slots {
+  display: flex;
+  gap: 14px;
+  min-height: 160px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.combat-chain-empty {
+  color: var(--ink-dim);
+  font-size: 12px;
+  font-style: italic;
+  max-width: 480px;
+}
+
+.chain-broken {
+  position: absolute;
+  top: -10px;
+  right: -8px;
+  font-size: 10px;
+  color: #ff6464;
+  background: rgba(0,0,0,0.8);
+  padding: 2px 5px;
+  border-radius: 4px;
+  border: 1px solid #ff6464;
+}
+
+.combat-hand {
+  display: flex;
+  gap: 10px;
+  padding: 16px 24px 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+  min-height: 200px;
+}
+
+.combat-player {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 24px;
+  align-items: center;
+  padding: 12px 24px 20px;
+  background: rgba(10,5,12,0.7);
+}
+
+.combat-player-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.combat-player-name {
+  font-size: 16px;
+  letter-spacing: 0.06em;
+  color: var(--accent-2);
+}
+
+.combat-player-hp {
+  position: relative;
+  width: 240px;
+  height: 18px;
+  background: rgba(0,0,0,0.7);
+  border: 1px solid var(--panel-border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.combat-player-info {
+  position: relative;
+}
+
+.combat-player-floaters {
+  position: absolute;
+  /* Sit just above the HP bar; bar is height ~18px and lives below the name. */
+  top: 30px;
+  left: 120px; /* roughly the horizontal center of the 240px HP bar */
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 8;
+}
+
+.combat-player-hp-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, #4a1018, var(--health));
+  transition: width 0.3s ease;
+}
+
+.combat-player-hp span {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-shadow: 0 1px 1px #000;
+}
+
+.combat-player-statuses {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.combat-mana {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.mana-orb {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #15263a, #050a14);
+  border: 2px solid #5db3ff;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 20px rgba(93, 179, 255, 0.3);
+}
+
+.mana-orb-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(180deg, #6bb6ff, #1a4a8a);
+  transition: height 0.3s ease;
+}
+
+.mana-orb span {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 0 6px #000, 0 0 12px #5db3ff;
+}
+
+.combat-deck-counts {
+  font-size: 10px;
+  color: var(--ink-dim);
+  display: flex;
+  gap: 8px;
+}
+
+.combat-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+}
+
+.big-button {
+  background: linear-gradient(180deg, #c63b3b 0%, #5a1820 100%);
+  border-color: #ff8080;
+  color: #fff;
+  font-size: 14px;
+  padding: 12px 24px;
+  font-weight: bold;
+}
+
+.big-button:hover:not(:disabled) {
+  background: linear-gradient(180deg, #d44b4b 0%, #6a2030 100%);
+}

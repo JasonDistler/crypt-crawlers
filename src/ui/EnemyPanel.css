@@ -1,0 +1,213 @@
+.enemy-panel {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.enemy {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 180px;
+}
+
+.enemy-floaters {
+  position: absolute;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.floater {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.95), 0 0 8px currentColor;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.floater-damage { color: #ff5252; }
+.floater-heal { color: #6effa5; }
+.floater-block { color: #6cc6ff; font-size: 20px; }
+.floater-status { color: #ffce6c; font-size: 18px; }
+
+.enemy-boss .enemy-sprite {
+  width: 172px;
+  height: 172px;
+  font-size: 100px;
+  box-shadow: 0 0 30px rgba(232, 162, 63, 0.4);
+}
+
+.enemy-sprite {
+  position: relative;
+  width: 124px;
+  height: 124px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 64px;
+  border: 2px solid rgba(255,255,255,0.15);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.6), inset 0 0 30px rgba(0,0,0,0.4);
+  overflow: hidden;
+}
+
+/* Portrait variant uses a painted illustration instead of a glyph. The frame
+   gets a gold/silver beveled edge to feel like a bestiary entry. */
+.enemy-sprite-portrait {
+  background: #1a0a14;
+  border: 2px solid #5a4a28;
+  box-shadow:
+    0 8px 20px rgba(0,0,0,0.7),
+    inset 0 0 0 1px rgba(255, 220, 160, 0.08),
+    inset 0 0 30px rgba(0,0,0,0.5);
+}
+
+.enemy-portrait-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  image-rendering: -webkit-optimize-contrast;
+}
+
+.enemy-sprite-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 30%, transparent 50%, rgba(0,0,0,0.45) 100%),
+    linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0) 30%, rgba(0,0,0,0.4));
+}
+
+.enemy-boss .enemy-sprite-portrait {
+  border-color: #c4922b;
+  box-shadow:
+    0 12px 28px rgba(0,0,0,0.8),
+    0 0 30px rgba(232, 162, 63, 0.35),
+    inset 0 0 0 1px rgba(255, 220, 160, 0.18),
+    inset 0 0 36px rgba(0,0,0,0.55);
+}
+
+.death-burst {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.death-particle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+  user-select: none;
+}
+
+.enemy-dead .enemy-sprite {
+  filter: grayscale(1) blur(1px);
+}
+
+.enemy-info {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.enemy-name {
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  color: var(--accent-2);
+}
+
+.enemy-hpbar {
+  position: relative;
+  width: 100%;
+  height: 12px;
+  background: rgba(0,0,0,0.7);
+  border: 1px solid var(--panel-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.enemy-hpbar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, #4a1018, var(--health));
+  transition: width 0.3s ease;
+}
+
+.enemy-hpbar-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-shadow: 0 1px 1px #000;
+}
+
+.enemy-intent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.intent {
+  font-size: 14px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.45);
+  border: 1px solid var(--panel-border);
+}
+
+.intent-attack { color: #ff6464; border-color: #ff646488; }
+.intent-defend { color: #6bb6ff; border-color: #6bb6ff88; }
+.intent-buff { color: #d4a8ff; border-color: #d4a8ff88; }
+.intent-status { color: #ff9870; border-color: #ff987088; }
+
+.enemy-intent-desc {
+  font-size: 10px;
+  color: var(--ink-dim);
+}
+
+.enemy-statuses {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.status {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.status-bleed { color: var(--bleed); }
+.status-burn { color: var(--burn); }
+.status-shield { color: var(--shield); }
+.status-strength { color: #c4f04a; }

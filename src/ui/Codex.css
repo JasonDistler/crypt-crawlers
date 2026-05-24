@@ -1,0 +1,126 @@
+.codex {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  backdrop-filter: blur(4px);
+}
+
+.codex-content {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 24px;
+  width: 95vw;
+  max-width: 1200px;
+  max-height: 92vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.codex-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--panel-border);
+  padding-bottom: 12px;
+}
+
+.codex-tab-active {
+  background: linear-gradient(180deg, var(--accent-2), #7a5816);
+  color: #1a0f0a;
+  border-color: var(--accent-2);
+}
+
+.codex-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 16px;
+}
+
+.codex-mystery {
+  width: 100px;
+  height: 150px;
+  background: rgba(0,0,0,0.6);
+  border: 2px dashed var(--panel-border);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  color: var(--ink-dim);
+}
+
+.codex-undiscovered {
+  opacity: 0.5;
+}
+
+.codex-evolution {
+  font-size: 10px;
+  color: var(--accent-2);
+  text-align: center;
+  margin-top: 4px;
+}
+
+.codex-bosses {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.codex-boss {
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.codex-boss-sprite {
+  width: 100px;
+  height: 100px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 56px;
+}
+
+.codex-boss-name {
+  font-size: 16px;
+  color: var(--accent-2);
+}
+
+.codex-boss-status {
+  font-size: 11px;
+  color: var(--ink-dim);
+  letter-spacing: 0.1em;
+}
+
+.codex-about {
+  line-height: 1.6;
+  color: var(--ink);
+}
+
+.codex-about h3 {
+  color: var(--accent-2);
+  margin-top: 16px;
+  margin-bottom: 8px;
+  font-size: 18px;
+}
+
+.codex-about p {
+  color: var(--ink-dim);
+}
+
+.codex-about ul {
+  color: var(--ink-dim);
+  padding-left: 20px;
+}

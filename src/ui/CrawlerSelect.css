@@ -1,0 +1,124 @@
+.crawler-select {
+  position: absolute;
+  inset: 0;
+  padding: 32px;
+  overflow: auto;
+  background: linear-gradient(160deg, #0a0610 0%, #1a0e1c 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.crawler-select h2 {
+  font-size: 32px;
+  letter-spacing: 0.08em;
+  color: var(--accent-2);
+}
+
+.crawler-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 320px));
+  gap: 18px;
+  max-width: 1400px;
+  width: 100%;
+}
+
+.crawler-card {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.crawler-locked {
+  opacity: 0.6;
+  filter: grayscale(0.7);
+}
+
+.crawler-portrait {
+  position: relative;
+  align-self: center;
+  width: 168px;
+  height: 200px;
+  background: #0a0610;
+  border: 3px solid #5a4a28;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  box-shadow:
+    0 8px 20px rgba(0,0,0,0.7),
+    inset 0 0 0 1px rgba(255, 220, 160, 0.1);
+}
+
+.crawler-portrait-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  image-rendering: -webkit-optimize-contrast;
+}
+
+.crawler-portrait-frame {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 30%, transparent 55%, rgba(0,0,0,0.5) 100%),
+    linear-gradient(180deg, rgba(255,220,160,0.08), rgba(0,0,0,0) 30%, rgba(0,0,0,0.4));
+  border-radius: 3px;
+}
+
+.crawler-card h3 {
+  font-size: 22px;
+  text-align: center;
+  color: var(--ink);
+}
+
+.crawler-desc {
+  text-align: center;
+  font-style: italic;
+  color: var(--ink-dim);
+  font-size: 13px;
+  min-height: 36px;
+}
+
+.crawler-stats {
+  display: flex;
+  justify-content: space-around;
+  font-size: 12px;
+  color: var(--gold);
+  padding: 6px 0;
+  border-top: 1px solid var(--panel-border);
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.crawler-passive {
+  font-size: 12px;
+  color: var(--ink);
+  line-height: 1.4;
+}
+
+.crawler-deck {
+  font-size: 11px;
+  color: var(--ink-dim);
+  line-height: 1.6;
+}
+
+.deck-entry {
+  display: inline-block;
+  margin-right: 6px;
+  background: rgba(0,0,0,0.4);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.crawler-lock {
+  text-align: center;
+  font-size: 12px;
+  color: var(--ink-dim);
+  padding: 10px 0;
+}

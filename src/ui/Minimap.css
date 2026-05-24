@@ -1,0 +1,106 @@
+.minimap {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  padding: 8px;
+  max-width: 240px;
+  max-height: 260px;
+  overflow: hidden;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 0;
+  text-transform: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.minimap:hover {
+  border-color: var(--accent-2);
+  box-shadow: 0 0 8px rgba(232, 162, 63, 0.25);
+}
+
+.minimap canvas {
+  display: block;
+  image-rendering: pixelated;
+  background: #0a0610;
+  max-width: 100%;
+  max-height: 220px;
+}
+
+.minimap-hint {
+  margin-top: 4px;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  text-align: center;
+}
+
+.minimap-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  backdrop-filter: blur(4px);
+  cursor: pointer;
+}
+
+.minimap-modal-inner {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 18px;
+  cursor: default;
+  max-width: 92vw;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+.minimap-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+  font-size: 18px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent-2);
+}
+
+.minimap-modal-inner canvas {
+  display: block;
+  image-rendering: pixelated;
+  background: #0a0610;
+  border: 1px solid var(--panel-border);
+  max-width: 100%;
+  max-height: 72vh;
+}
+
+.minimap-modal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 11px;
+  color: var(--ink-dim);
+  letter-spacing: 0.06em;
+}
+
+.minimap-modal-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.minimap-modal-legend i {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  display: inline-block;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}

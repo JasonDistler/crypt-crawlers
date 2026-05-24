@@ -1,0 +1,341 @@
+/* =============================================================================
+ * Magic: The Gathering–style card frame
+ *
+ * - Outer beveled border tinted by the card's "color" (red/white/blue/etc).
+ * - Inner card body with: title bar, art frame, type bar, text box.
+ * - Subtle bevels and inset shadows for that printed-card feel.
+ * - Rarity changes the title bar / corner glow, not the base frame color.
+ * =========================================================================== */
+
+.card {
+  position: relative;
+  width: 158px;
+  height: 224px;
+  padding: 6px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: box-shadow 0.15s ease, filter 0.15s ease;
+  text-align: left;
+  letter-spacing: 0;
+
+  /* The outer card-color border lives here */
+  background:
+    linear-gradient(160deg, var(--card-edge-light), var(--card-edge-dark) 55%, var(--card-edge-light));
+  border: none;
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.6);
+
+  /* Color variables — overridden per .card-color-* */
+  --card-edge-light: #a89878;
+  --card-edge-dark: #3a3228;
+  --card-text-bg: #f3e6cd;
+  --card-text-ink: #1a1208;
+  --card-pip-from: #888;
+  --card-pip-to: #444;
+}
+
+/* ----- Color variants (mapped roughly onto MTG's color pie) ----- */
+
+.card-color-red {
+  --card-edge-light: #d04a2a;
+  --card-edge-dark: #4a0a0a;
+  --card-text-bg: #f6e3c8;
+  --card-text-ink: #1a0a08;
+  --card-pip-from: #ff7848;
+  --card-pip-to: #c4231a;
+}
+
+.card-color-white {
+  --card-edge-light: #f3e9c8;
+  --card-edge-dark: #a89878;
+  --card-text-bg: #f8efd6;
+  --card-text-ink: #1a1208;
+  --card-pip-from: #ffffff;
+  --card-pip-to: #c4ad7c;
+}
+
+.card-color-blue {
+  --card-edge-light: #5e9bd8;
+  --card-edge-dark: #0a1a4a;
+  --card-text-bg: #e3edf8;
+  --card-text-ink: #0a1428;
+  --card-pip-from: #6cc6ff;
+  --card-pip-to: #1a4a9a;
+}
+
+.card-color-green {
+  --card-edge-light: #6ea864;
+  --card-edge-dark: #0e2410;
+  --card-text-bg: #e3f0d8;
+  --card-text-ink: #0e1808;
+  --card-pip-from: #8adf6a;
+  --card-pip-to: #2a6a28;
+}
+
+.card-color-black {
+  --card-edge-light: #5a4860;
+  --card-edge-dark: #0a0608;
+  --card-text-bg: #d9d2c8;
+  --card-text-ink: #08060a;
+  --card-pip-from: #5a4a60;
+  --card-pip-to: #1a0a14;
+}
+
+.card-color-artifact {
+  --card-edge-light: #b8b8c4;
+  --card-edge-dark: #2a2a32;
+  --card-text-bg: #e0e0e8;
+  --card-text-ink: #14141a;
+  --card-pip-from: #d8d8e0;
+  --card-pip-to: #5a5a64;
+}
+
+/* ----- Small (deck preview) variant ----- */
+
+.card-small {
+  width: 120px;
+  height: 170px;
+  padding: 5px;
+  border-radius: 8px;
+}
+
+/* ----- Disabled ----- */
+
+.card:disabled,
+.card-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: saturate(0.5);
+}
+
+/* ----- Rarity glow on the outer frame ----- */
+
+.card-rarity-uncommon { box-shadow: 0 6px 16px rgba(93, 179, 255, 0.25), 0 0 0 1px rgba(93, 179, 255, 0.35), inset 0 1px 0 rgba(255,255,255,0.18); }
+.card-rarity-rare { box-shadow: 0 6px 16px rgba(196, 162, 63, 0.4), 0 0 0 1px rgba(196, 162, 63, 0.5), inset 0 1px 0 rgba(255,255,255,0.2); }
+.card-rarity-legendary {
+  box-shadow:
+    0 8px 24px rgba(198, 59, 59, 0.55),
+    0 0 0 1px rgba(255, 200, 100, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+/* ----- Wild override ----- */
+
+.card-wild {
+  filter: saturate(0.45);
+}
+
+/* =============================================================================
+ * Inner frame (the actual card body)
+ * =========================================================================== */
+
+.card-frame {
+  width: 100%;
+  height: 100%;
+  background: #0e0a14;
+  border-radius: 6px;
+  padding: 6px;
+  display: grid;
+  grid-template-rows: auto auto auto 1fr;
+  gap: 4px;
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.6);
+}
+
+/* ----- Title bar ----- */
+
+.card-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 6px 3px 8px;
+  background: linear-gradient(180deg, var(--card-text-bg), color-mix(in srgb, var(--card-text-bg) 80%, #000));
+  border-radius: 4px;
+  border: 1px solid rgba(0,0,0,0.45);
+  min-height: 22px;
+  color: var(--card-text-ink);
+}
+
+.card-title {
+  font-family: 'Cinzel', 'Times New Roman', serif;
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 78%;
+}
+
+.card-small .card-title { font-size: 10px; }
+
+.card-cost-pip {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--card-pip-from), var(--card-pip-to));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Cinzel', serif;
+  font-weight: 800;
+  font-size: 13px;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.7), 0 0 4px rgba(0,0,0,0.6);
+  border: 1.5px solid rgba(0, 0, 0, 0.55);
+  box-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.5),
+    0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.card-small .card-cost-pip { width: 18px; height: 18px; font-size: 11px; }
+
+/* ----- Art frame ----- */
+
+.card-art-frame {
+  position: relative;
+  height: 80px;
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.7);
+  box-shadow:
+    inset 0 0 0 1px var(--card-edge-light),
+    inset 0 0 0 2px rgba(0,0,0,0.45),
+    0 1px 2px rgba(0,0,0,0.5);
+  background: #1a0a14;
+}
+
+.card-small .card-art-frame { height: 62px; }
+
+.card-art-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  image-rendering: -webkit-optimize-contrast;
+}
+
+.card-art-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 30%, transparent 50%, rgba(0,0,0,0.4) 100%),
+    linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0) 40%, rgba(0,0,0,0.4));
+}
+
+/* ----- Type bar ----- */
+
+.card-typebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 6px;
+  background: linear-gradient(180deg, var(--card-text-bg), color-mix(in srgb, var(--card-text-bg) 75%, #000));
+  border-radius: 3px;
+  border: 1px solid rgba(0,0,0,0.45);
+  font-family: 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 9.5px;
+  color: var(--card-text-ink);
+  letter-spacing: 0.01em;
+  min-height: 16px;
+}
+
+.card-small .card-typebar { font-size: 8.5px; min-height: 14px; }
+
+.card-type-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.card-rarity-pip {
+  font-style: normal;
+  font-size: 11px;
+  margin-left: 4px;
+  color: color-mix(in srgb, var(--card-text-ink) 60%, transparent);
+}
+.card-rarity-common .card-rarity-pip { color: #6a5a3a; }
+.card-rarity-uncommon .card-rarity-pip { color: #2a7ad8; }
+.card-rarity-rare .card-rarity-pip { color: #c4922b; }
+.card-rarity-legendary .card-rarity-pip { color: #c63b3b; }
+
+/* ----- Text box ----- */
+
+.card-textbox {
+  position: relative;
+  padding: 5px 7px 18px 7px;
+  background: linear-gradient(180deg, var(--card-text-bg), color-mix(in srgb, var(--card-text-bg) 85%, #000));
+  border-radius: 4px;
+  border: 1px solid rgba(0,0,0,0.45);
+  font-family: 'Times New Roman', serif;
+  color: var(--card-text-ink);
+  overflow: hidden;
+}
+
+.card-rules {
+  font-size: 9.5px;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+.card-small .card-rules { font-size: 8.5px; line-height: 1.2; }
+
+.card-flavor {
+  margin-top: 3px;
+  padding-top: 3px;
+  border-top: 1px solid rgba(0, 0, 0, 0.2);
+  font-size: 9px;
+  font-style: italic;
+  color: color-mix(in srgb, var(--card-text-ink) 65%, transparent);
+  line-height: 1.2;
+}
+
+.card-small .card-flavor { font-size: 7.5px; }
+
+/* ----- Stat box (bottom right corner) ----- */
+
+.card-stat {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  min-width: 28px;
+  height: 16px;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, var(--card-text-bg), color-mix(in srgb, var(--card-text-bg) 75%, #000));
+  border: 1px solid rgba(0,0,0,0.6);
+  border-radius: 3px;
+  font-family: 'Cinzel', serif;
+  font-weight: 800;
+  font-size: 11px;
+  color: var(--card-text-ink);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+}
+
+.card-stat:empty { display: none; }
+
+.card-small .card-stat { font-size: 10px; height: 14px; min-width: 24px; }
+
+/* =============================================================================
+ * Chain multiplier — appears outside the frame
+ * =========================================================================== */
+
+.card-multiplier {
+  position: absolute;
+  bottom: -10px;
+  right: -8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 3px 8px;
+  border-radius: 12px;
+  border: 1px solid #fff;
+  text-shadow: 0 1px 1px #000;
+  font-family: inherit;
+  letter-spacing: 0.04em;
+}
