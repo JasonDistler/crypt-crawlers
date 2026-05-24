@@ -17,6 +17,14 @@ const CELL_SIZE = 1;
 const WALL_HEIGHT = 2.2; // raised for a vaulted dungeon feel & to clear hovering cards
 const EYE_HEIGHT = 0.9;  // raised proportionally so the player feels human-scaled
 
+/**
+ * Global brightness multiplier applied to every light source (ambient,
+ * hemisphere, torches, shrines, portals, player torch). 1.0 = theme-defined
+ * baseline; bumping this brightens the whole dungeon proportionally without
+ * losing per-theme mood (the catacombs still feel dimmer than the throne room).
+ */
+const BRIGHTNESS_BOOST = 1.3;
+
 const FACING_TO_YAW: Record<Facing, number> = {
   0: 0,           // North = -Z
   1: -Math.PI / 2, // East = +X
@@ -941,66 +949,106 @@ const SPIDERWEB_TEXTURE_CACHE = { tex: null as THREE.CanvasTexture | null };
  */
 function buildSpiderwebTexture(): THREE.CanvasTexture {
   if (SPIDERWEB_TEXTURE_CACHE.tex) return SPIDERWEB_TEXTURE_CACHE.tex;
-  const W = 256;
-  const H = 256;
+  const W = 512;
+  const H = 512;
   const c = document.createElement('canvas');
   c.width = W;
   c.height = H;
   const g = c.getContext('2d')!;
   g.clearRect(0, 0, W, H);
 
-  // Anchor (the imaginary point where the spider sits) at top-center
+  // Anchor (the imaginary point where the spider sits) at top-center.
   const ax = W / 2;
-  const ay = 12;
+  const ay = 22;
 
-  // Radial threads fanning downward (about a 180° arc)
-  g.strokeStyle = 'rgba(232, 232, 240, 0.85)';
-  g.lineWidth = 1.4;
-  const threadCount = 13;
+  // Radial threads fanning downward (~180° arc). Alternate brighter "structural"
+  // threads with dimmer secondary threads for visual depth.
+  const threadCount = 23;
   for (let i = 0; i < threadCount; i++) {
     const angle = (i / (threadCount - 1)) * Math.PI; // 0..π (right-down-left)
+    const isStructural = i % 2 === 0;
+    g.strokeStyle = isStructural ? 'rgba(238, 238, 244, 0.85)' : 'rgba(220, 220, 230, 0.55)';
+    g.lineWidth = isStructural ? 1.4 : 1;
     g.beginPath();
     g.moveTo(ax, ay);
-    g.lineTo(ax + Math.cos(angle) * 260, ay + Math.sin(angle) * 260);
+    g.lineTo(ax + Math.cos(angle) * 520, ay + Math.sin(angle) * 520);
     g.stroke();
   }
 
-  // Concentric capture threads (the catching arcs)
-  for (let r = 28; r < 250; r += 22) {
-    const alpha = Math.max(0, 0.7 - (r - 28) / 230 * 0.55);
+  // Concentric capture threads (the catching arcs). Each arc is drawn as a
+  // sequence of slight chords so it sags slightly between threads — gives the
+  // web a more organic, hand-spun feel.
+  for (let r = 42; r < 480; r += 18) {
+    const alpha = Math.max(0, 0.72 - (r - 42) / 460 * 0.6);
     g.strokeStyle = `rgba(232, 232, 240, ${alpha})`;
-    g.lineWidth = 1;
+    g.lineWidth = 0.9;
+    const segs = 28;
     g.beginPath();
-    g.arc(ax, ay, r, 0, Math.PI);
+    for (let s = 0; s <= segs; s++) {
+      const a = (s / segs) * Math.PI;
+      // Subtle sag — capture arcs droop slightly between radial spokes
+      const spokeIdx = (s / segs) * (threadCount - 1);
+      const sag = Math.sin((spokeIdx - Math.floor(spokeIdx)) * Math.PI) * 1.5;
+      const rr = r + sag;
+      const px = ax + Math.cos(a) * rr;
+      const py = ay + Math.sin(a) * rr;
+      if (s === 0) g.moveTo(px, py);
+      else g.lineTo(px, py);
+    }
     g.stroke();
   }
 
-  // A few sagging/broken threads for extra creep factor
-  g.strokeStyle = 'rgba(210, 210, 220, 0.6)';
-  g.lineWidth = 1;
-  for (let i = 0; i < 6; i++) {
-    const angleA = (i / 6) * Math.PI + 0.15;
-    const angleB = angleA + 0.55;
-    const rA = 50 + (i % 3) * 18;
-    const rB = rA + 18;
+  // Sagging broken threads for extra creep factor — single-line catenaries
+  // hanging off the main structure.
+  g.strokeStyle = 'rgba(214, 214, 224, 0.55)';
+  g.lineWidth = 0.9;
+  for (let i = 0; i < 10; i++) {
+    const angleA = (i / 10) * Math.PI + 0.1;
+    const angleB = angleA + 0.45;
+    const rA = 70 + (i % 4) * 26;
+    const rB = rA + 22;
     g.beginPath();
     g.moveTo(ax + Math.cos(angleA) * rA, ay + Math.sin(angleA) * rA);
     g.quadraticCurveTo(
-      ax + Math.cos((angleA + angleB) / 2) * (rA + 18),
-      ay + Math.sin((angleA + angleB) / 2) * (rA + 30),
+      ax + Math.cos((angleA + angleB) / 2) * (rA + 24),
+      ay + Math.sin((angleA + angleB) / 2) * (rA + 50),
       ax + Math.cos(angleB) * rB,
       ay + Math.sin(angleB) * rB,
     );
     g.stroke();
   }
 
-  // Radial fade-out: mask the canvas with a soft radial gradient so the web
-  // disappears toward the bottom corners of the plane instead of cutting off
+  // Sparse dust motes / wrapped prey along the radial threads.
+  g.fillStyle = 'rgba(160, 154, 140, 0.55)';
+  for (let i = 0; i < 14; i++) {
+    const angle = Math.random() * Math.PI;
+    const r = 60 + Math.random() * 340;
+    const x = ax + Math.cos(angle) * r;
+    const y = ay + Math.sin(angle) * r;
+    g.beginPath();
+    g.ellipse(x, y, 1.2 + Math.random() * 1.6, 0.8 + Math.random() * 1.2, angle, 0, Math.PI * 2);
+    g.fill();
+  }
+
+  // Anchor knot at the top-center — small dense tangle where the spider would sit.
+  g.strokeStyle = 'rgba(180, 174, 160, 0.85)';
+  g.lineWidth = 1;
+  for (let i = 0; i < 12; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const len = 6 + Math.random() * 10;
+    g.beginPath();
+    g.moveTo(ax, ay);
+    g.lineTo(ax + Math.cos(a) * len, ay + Math.sin(a) * len);
+    g.stroke();
+  }
+
+  // Radial fade-out — mask the canvas with a soft radial gradient so the web
+  // dissolves toward the bottom corners of the plane instead of cutting off
   // at a hard square edge.
   g.globalCompositeOperation = 'destination-in';
-  const grad = g.createRadialGradient(ax, ay, 10, ax, ay, 240);
+  const grad = g.createRadialGradient(ax, ay, 20, ax, ay, 480);
   grad.addColorStop(0, 'rgba(0,0,0,1)');
-  grad.addColorStop(0.6, 'rgba(0,0,0,1)');
+  grad.addColorStop(0.62, 'rgba(0,0,0,1)');
   grad.addColorStop(1, 'rgba(0,0,0,0)');
   g.fillStyle = grad;
   g.fillRect(0, 0, W, H);
@@ -1009,7 +1057,7 @@ function buildSpiderwebTexture(): THREE.CanvasTexture {
   const tex = new THREE.CanvasTexture(c);
   tex.magFilter = THREE.LinearFilter;
   tex.minFilter = THREE.LinearMipmapLinearFilter;
-  tex.anisotropy = 4;
+  tex.anisotropy = 8;
   tex.needsUpdate = true;
   SPIDERWEB_TEXTURE_CACHE.tex = tex;
   return tex;
@@ -1126,21 +1174,251 @@ function WallChains({ fixture }: { fixture: Fixture }) {
   );
 }
 
-/** Tattered heraldic banner — pole + cloth + emblem. */
+const BANNER_PALETTES: Array<{ cloth: [number, number, number]; sigil: [number, number, number]; sigilKind: 'cross' | 'chalice' | 'crown' | 'wing' }> = [
+  { cloth: [90, 24, 32],  sigil: [196, 146, 43],  sigilKind: 'cross' },   // crimson + gold cross
+  { cloth: [26, 40, 64],  sigil: [220, 207, 166], sigilKind: 'chalice' }, // navy + bone chalice
+  { cloth: [42, 24, 64],  sigil: [196, 162, 63],  sigilKind: 'crown' },   // royal purple + gold crown
+  { cloth: [28, 42, 24],  sigil: [168, 196, 108], sigilKind: 'wing' },    // moss + pale spread wing
+];
+
+const BANNER_TEXTURE_CACHE = new Map<number, THREE.CanvasTexture>();
+
+/**
+ * Procedural heraldic banner texture: cloth weave + damask diamond sub-pattern
+ * + central sigil + wear marks + alpha-cut tatter hem with fraying threads.
+ * Painted at 256×512 (tall banner aspect) so close-up details remain crisp.
+ */
+function buildBannerTexture(variant: number): THREE.CanvasTexture {
+  const cached = BANNER_TEXTURE_CACHE.get(variant);
+  if (cached) return cached;
+  const W = 256;
+  const H = 512;
+  const c = document.createElement('canvas');
+  c.width = W;
+  c.height = H;
+  const g = c.getContext('2d')!;
+  const p = BANNER_PALETTES[variant % BANNER_PALETTES.length];
+  const [cr, cg, cb] = p.cloth;
+  const [sr, sg, sb] = p.sigil;
+
+  // Cloth base — slight vertical gradient (hint brighter at top → darker at bottom)
+  const baseGrad = g.createLinearGradient(0, 0, 0, H);
+  baseGrad.addColorStop(0, `rgb(${Math.min(255, cr + 18)}, ${Math.min(255, cg + 14)}, ${Math.min(255, cb + 14)})`);
+  baseGrad.addColorStop(1, `rgb(${Math.max(0, cr - 14)}, ${Math.max(0, cg - 12)}, ${Math.max(0, cb - 12)})`);
+  g.fillStyle = baseGrad;
+  g.fillRect(0, 0, W, H);
+
+  // Fabric weave — fine horizontal weft + vertical warp highlights
+  g.strokeStyle = `rgba(0, 0, 0, 0.10)`;
+  g.lineWidth = 1;
+  for (let y = 0; y < H; y += 2) {
+    g.beginPath();
+    g.moveTo(0, y + 0.5);
+    g.lineTo(W, y + 0.5);
+    g.stroke();
+  }
+  g.strokeStyle = `rgba(255, 255, 255, 0.05)`;
+  for (let x = 0; x < W; x += 3) {
+    g.beginPath();
+    g.moveTo(x + 0.5, 0);
+    g.lineTo(x + 0.5, H);
+    g.stroke();
+  }
+
+  // Damask diamonds — subtle, in a slightly lighter cloth tone
+  const damaskColor = `rgba(${Math.min(255, cr + 30)}, ${Math.min(255, cg + 22)}, ${Math.min(255, cb + 22)}, 0.35)`;
+  g.strokeStyle = damaskColor;
+  g.lineWidth = 1.2;
+  const dRows = 8;
+  const dCols = 3;
+  const dH = (H * 0.7) / dRows;
+  const dW = W / dCols;
+  for (let dr = 0; dr < dRows; dr++) {
+    const yc = 12 + (dr + 0.5) * dH;
+    for (let dc = 0; dc < dCols; dc++) {
+      const xc = (dc + 0.5) * dW + (dr % 2 ? dW * 0.5 : 0);
+      g.beginPath();
+      g.moveTo(xc, yc - dH * 0.4);
+      g.lineTo(xc + dW * 0.35, yc);
+      g.lineTo(xc, yc + dH * 0.4);
+      g.lineTo(xc - dW * 0.35, yc);
+      g.closePath();
+      g.stroke();
+      // Inner fleur dot
+      g.fillStyle = damaskColor;
+      g.beginPath();
+      g.arc(xc, yc, 2, 0, Math.PI * 2);
+      g.fill();
+    }
+  }
+
+  // Side and top trim — thin sigil-colored band along the cloth edges
+  g.strokeStyle = `rgba(${sr}, ${sg}, ${sb}, 0.55)`;
+  g.lineWidth = 3;
+  g.beginPath();
+  g.moveTo(6, 0);
+  g.lineTo(6, H * 0.78);
+  g.moveTo(W - 6, 0);
+  g.lineTo(W - 6, H * 0.78);
+  g.moveTo(0, 6);
+  g.lineTo(W, 6);
+  g.stroke();
+
+  // Central sigil — drawn full-color so it reads at a distance
+  const sx = W / 2;
+  const sy = H * 0.34;
+  const ringR = W * 0.24;
+  const sigilCol = `rgb(${sr}, ${sg}, ${sb})`;
+  g.strokeStyle = sigilCol;
+  g.lineWidth = 5;
+  g.beginPath();
+  g.arc(sx, sy, ringR, 0, Math.PI * 2);
+  g.stroke();
+  g.lineWidth = 2;
+  g.beginPath();
+  g.arc(sx, sy, ringR * 0.78, 0, Math.PI * 2);
+  g.stroke();
+
+  // Glyph inside the ring — varies per variant for visual identity
+  g.fillStyle = sigilCol;
+  if (p.sigilKind === 'cross') {
+    g.fillRect(sx - ringR * 0.1, sy - ringR * 0.85, ringR * 0.2, ringR * 1.5);
+    g.fillRect(sx - ringR * 0.55, sy - ringR * 0.1, ringR * 1.1, ringR * 0.2);
+  } else if (p.sigilKind === 'chalice') {
+    g.beginPath();
+    g.moveTo(sx - ringR * 0.45, sy - ringR * 0.35);
+    g.quadraticCurveTo(sx, sy + ringR * 0.25, sx + ringR * 0.45, sy - ringR * 0.35);
+    g.closePath();
+    g.fill();
+    g.fillRect(sx - ringR * 0.07, sy + ringR * 0.1, ringR * 0.14, ringR * 0.32);
+    g.fillRect(sx - ringR * 0.28, sy + ringR * 0.42, ringR * 0.56, ringR * 0.12);
+    g.strokeStyle = sigilCol;
+    g.lineWidth = 3;
+    g.beginPath();
+    g.moveTo(sx - ringR * 0.45, sy - ringR * 0.35);
+    g.lineTo(sx + ringR * 0.45, sy - ringR * 0.35);
+    g.stroke();
+  } else if (p.sigilKind === 'crown') {
+    g.fillRect(sx - ringR * 0.55, sy + ringR * 0.18, ringR * 1.1, ringR * 0.18);
+    g.beginPath();
+    g.moveTo(sx - ringR * 0.55, sy + ringR * 0.18);
+    g.lineTo(sx - ringR * 0.36, sy - ringR * 0.45);
+    g.lineTo(sx - ringR * 0.18, sy + ringR * 0.0);
+    g.lineTo(sx, sy - ringR * 0.55);
+    g.lineTo(sx + ringR * 0.18, sy + ringR * 0.0);
+    g.lineTo(sx + ringR * 0.36, sy - ringR * 0.45);
+    g.lineTo(sx + ringR * 0.55, sy + ringR * 0.18);
+    g.closePath();
+    g.fill();
+    for (const xo of [-ringR * 0.34, 0, ringR * 0.34]) {
+      g.beginPath();
+      g.arc(sx + xo, sy + ringR * 0.27, ringR * 0.06, 0, Math.PI * 2);
+      g.fill();
+    }
+  } else {
+    // Spread wing — feathered V from the center
+    g.lineWidth = 4;
+    g.strokeStyle = sigilCol;
+    for (let side = -1; side <= 1; side += 2) {
+      g.beginPath();
+      g.moveTo(sx, sy);
+      g.quadraticCurveTo(sx + side * ringR * 0.45, sy - ringR * 0.4, sx + side * ringR * 0.8, sy - ringR * 0.05);
+      g.stroke();
+      for (let i = 0; i < 6; i++) {
+        const tt = (i + 1) / 7;
+        const fx = sx + side * tt * ringR * 0.8;
+        const fy = sy - ringR * 0.4 * (1 - Math.abs(tt - 0.5) * 1.4);
+        g.beginPath();
+        g.moveTo(fx, fy);
+        g.lineTo(fx, fy + ringR * 0.22);
+        g.stroke();
+      }
+    }
+    g.beginPath();
+    g.arc(sx, sy, ringR * 0.06, 0, Math.PI * 2);
+    g.fill();
+  }
+
+  // Wear marks — irregular dark scuffs scattered across the cloth area
+  g.fillStyle = 'rgba(0, 0, 0, 0.18)';
+  for (let i = 0; i < 16; i++) {
+    const x = Math.random() * W;
+    const y = 20 + Math.random() * (H * 0.78);
+    const w = 6 + Math.random() * 22;
+    const h = 1 + Math.random() * 2.2;
+    g.save();
+    g.translate(x, y);
+    g.rotate((Math.random() - 0.5) * 0.4);
+    g.fillRect(-w / 2, -h / 2, w, h);
+    g.restore();
+  }
+
+  // Sub-pixel fabric grit
+  for (let i = 0; i < 1200; i++) {
+    g.fillStyle = `rgba(0, 0, 0, ${Math.random() * 0.12})`;
+    g.fillRect(Math.random() * W, Math.random() * H * 0.82, 1, 1);
+  }
+
+  // Tattered hem — alpha-mask the bottom of the canvas into a jagged peak/valley
+  // pattern so the cloth physically appears torn instead of squared off.
+  const hemStart = H * 0.78;
+  const hemPeak = hemStart + (H - hemStart) * 0.92;
+  const tatterPeaks: Array<{ x: number; depth: number }> = [];
+  const peakCount = 7;
+  for (let i = 0; i <= peakCount; i++) {
+    tatterPeaks.push({
+      x: (i / peakCount) * W,
+      depth: 0.35 + Math.random() * 0.6,
+    });
+  }
+  g.globalCompositeOperation = 'destination-out';
+  g.fillStyle = '#000';
+  g.beginPath();
+  g.moveTo(0, H);
+  g.lineTo(0, hemPeak);
+  for (let i = 0; i < tatterPeaks.length - 1; i++) {
+    const a = tatterPeaks[i];
+    const b = tatterPeaks[i + 1];
+    const valleyX = (a.x + b.x) / 2;
+    const valleyY = hemStart + (H - hemStart) * a.depth;
+    g.lineTo(a.x, hemPeak);
+    g.lineTo(valleyX, valleyY);
+    g.lineTo(b.x, hemPeak);
+  }
+  g.lineTo(W, hemPeak);
+  g.lineTo(W, H);
+  g.closePath();
+  g.fill();
+  g.globalCompositeOperation = 'source-over';
+
+  // Fray threads dangling from the tatter peaks
+  g.strokeStyle = `rgba(${Math.max(0, cr - 30)}, ${Math.max(0, cg - 24)}, ${Math.max(0, cb - 24)}, 0.7)`;
+  g.lineWidth = 1;
+  for (const peak of tatterPeaks) {
+    if (Math.random() < 0.7) {
+      const len = 6 + Math.random() * 18;
+      const sway = (Math.random() - 0.5) * 6;
+      g.beginPath();
+      g.moveTo(peak.x, hemPeak);
+      g.quadraticCurveTo(peak.x + sway, hemPeak + len * 0.6, peak.x + sway * 0.5, hemPeak + len);
+      g.stroke();
+    }
+  }
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.anisotropy = 8;
+  tex.needsUpdate = true;
+  BANNER_TEXTURE_CACHE.set(variant, tex);
+  return tex;
+}
+
+/** Tattered heraldic banner — pole + textured cloth (weave + damask + sigil + hem all baked in). */
 function WallBanner({ fixture }: { fixture: Fixture }) {
   const t = wallTorchTransform(fixture.x, fixture.y, fixture.wallSide!);
   const v = fixture.variant ?? 0;
-  const palettes = [
-    { cloth: '#5a1820', sigil: '#c4922b' }, // crimson + gold
-    { cloth: '#1a2840', sigil: '#dccfa6' }, // navy + bone
-    { cloth: '#2a1840', sigil: '#c4a23f' }, // royal purple + gold
-    { cloth: '#1c2a18', sigil: '#a8c46c' }, // moss + pale
-  ];
-  const p = palettes[v % palettes.length];
-  // Three vertical jagged "frayed" rectangles at the bottom for tatter.
-  const tatterOffsets = [
-    -0.18, -0.06, 0.08, 0.2,
-  ];
+  const tex = useMemo(() => buildBannerTexture(v), [v]);
   return (
     <group position={[t.x, 1.55, t.z]} rotation={[0, t.ry, 0]}>
       {/* Horizontal pole */}
@@ -1155,82 +1433,297 @@ function WallBanner({ fixture }: { fixture: Fixture }) {
           <meshStandardMaterial color="#c4922b" metalness={0.7} roughness={0.4} />
         </mesh>
       ))}
-      {/* Main cloth panel */}
+      {/* Single textured cloth panel — alpha-cut tatter at the bottom */}
       <mesh position={[0, -0.05, 0.05]}>
-        <planeGeometry args={[0.5, 0.95]} />
-        <meshStandardMaterial color={p.cloth} roughness={1} side={THREE.DoubleSide} />
-      </mesh>
-      {/* Tattered hem */}
-      {tatterOffsets.map((xo, i) => (
-        <mesh key={`t-${i}`} position={[xo, -0.6, 0.051]}>
-          <planeGeometry args={[0.08, 0.16 + (i % 2) * 0.06]} />
-          <meshStandardMaterial color={p.cloth} roughness={1} side={THREE.DoubleSide} />
-        </mesh>
-      ))}
-      {/* Sigil — ring + cross-glyph (emissive so it reads in low light) */}
-      <mesh position={[0, 0.05, 0.054]}>
-        <ringGeometry args={[0.07, 0.095, 24]} />
-        <meshBasicMaterial color={p.sigil} toneMapped={false} side={THREE.DoubleSide} />
-      </mesh>
-      <mesh position={[0, 0.05, 0.055]}>
-        <boxGeometry args={[0.022, 0.16, 0.002]} />
-        <meshBasicMaterial color={p.sigil} toneMapped={false} />
-      </mesh>
-      <mesh position={[0, 0.05, 0.055]}>
-        <boxGeometry args={[0.16, 0.022, 0.002]} />
-        <meshBasicMaterial color={p.sigil} toneMapped={false} />
+        <planeGeometry args={[0.5, 1.0]} />
+        <meshStandardMaterial
+          map={tex}
+          transparent
+          alphaTest={0.4}
+          roughness={1}
+          side={THREE.DoubleSide}
+        />
       </mesh>
     </group>
   );
 }
 
+const GRAVE_PLAQUE_TEXTURE_CACHE = { tex: null as THREE.CanvasTexture | null };
+
+/**
+ * Procedural tomb-plaque engraving texture — weathered stone slab with a
+ * carved skull (with proper sockets, nose cavity, teeth), crossed bones
+ * beneath, and a multi-line rune inscription. Cracks and grime baked in.
+ * Painted at 512×768 so the engraving holds up at close player distance.
+ */
+function buildGravePlaqueTexture(): THREE.CanvasTexture {
+  if (GRAVE_PLAQUE_TEXTURE_CACHE.tex) return GRAVE_PLAQUE_TEXTURE_CACHE.tex;
+  const W = 512;
+  const H = 768;
+  const c = document.createElement('canvas');
+  c.width = W;
+  c.height = H;
+  const g = c.getContext('2d')!;
+
+  // Recessed stone background (slightly darker than the outer slab)
+  const baseGrad = g.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, W * 0.8);
+  baseGrad.addColorStop(0, '#2a221c');
+  baseGrad.addColorStop(1, '#15110d');
+  g.fillStyle = baseGrad;
+  g.fillRect(0, 0, W, H);
+  // Subtle stone variation (mineral specks + flecks)
+  for (let i = 0; i < 160; i++) {
+    const a = 0.04 + Math.random() * 0.06;
+    g.fillStyle = `rgba(220, 198, 168, ${a})`;
+    const sz = 3 + Math.random() * 10;
+    g.fillRect(Math.random() * W, Math.random() * H, sz, sz * 0.4);
+  }
+
+  // Inner shadow border (concave-recess illusion)
+  const shadowGrad = g.createLinearGradient(0, 0, 0, H);
+  shadowGrad.addColorStop(0, 'rgba(0, 0, 0, 0.55)');
+  shadowGrad.addColorStop(0.05, 'rgba(0, 0, 0, 0)');
+  g.fillStyle = shadowGrad;
+  g.fillRect(0, 0, W, H);
+
+  // ----- Carved skull -----
+  const cx = W / 2;
+  const skullCy = H * 0.27;
+  const skullR = W * 0.18;
+  // Recessed dark base — slightly inset and softened
+  g.fillStyle = '#0a0808';
+  g.beginPath();
+  g.ellipse(cx, skullCy, skullR * 1.05, skullR * 1.12, 0, 0, Math.PI * 2);
+  g.fill();
+  // Jaw
+  g.beginPath();
+  g.ellipse(cx, skullCy + skullR * 0.68, skullR * 0.7, skullR * 0.36, 0, 0, Math.PI * 2);
+  g.fill();
+  // Bone color fill — overlaid only on the skull silhouette
+  g.save();
+  g.beginPath();
+  g.ellipse(cx, skullCy, skullR * 1.0, skullR * 1.08, 0, 0, Math.PI * 2);
+  g.ellipse(cx, skullCy + skullR * 0.68, skullR * 0.62, skullR * 0.3, 0, 0, Math.PI * 2);
+  g.clip();
+  const boneGrad = g.createLinearGradient(cx - skullR, skullCy - skullR, cx + skullR, skullCy + skullR);
+  boneGrad.addColorStop(0, '#c8b890');
+  boneGrad.addColorStop(0.5, '#a89a78');
+  boneGrad.addColorStop(1, '#6a5e44');
+  g.fillStyle = boneGrad;
+  g.fillRect(cx - skullR * 1.2, skullCy - skullR * 1.2, skullR * 2.4, skullR * 2.4);
+  // Crown highlight
+  g.fillStyle = 'rgba(255, 240, 210, 0.18)';
+  g.beginPath();
+  g.ellipse(cx - skullR * 0.25, skullCy - skullR * 0.45, skullR * 0.45, skullR * 0.22, -0.4, 0, Math.PI * 2);
+  g.fill();
+  g.restore();
+  // Skull rim shadow (carved-edge effect)
+  g.strokeStyle = 'rgba(0, 0, 0, 0.55)';
+  g.lineWidth = 3;
+  g.beginPath();
+  g.ellipse(cx, skullCy, skullR * 1.0, skullR * 1.08, 0, 0, Math.PI * 2);
+  g.stroke();
+  // Eye sockets
+  g.fillStyle = '#000';
+  g.beginPath();
+  g.ellipse(cx - skullR * 0.35, skullCy - skullR * 0.18, skullR * 0.2, skullR * 0.22, 0, 0, Math.PI * 2);
+  g.ellipse(cx + skullR * 0.35, skullCy - skullR * 0.18, skullR * 0.2, skullR * 0.22, 0, 0, Math.PI * 2);
+  g.fill();
+  // Socket rim highlight (top-left)
+  g.strokeStyle = 'rgba(255, 240, 210, 0.22)';
+  g.lineWidth = 1.5;
+  for (const xo of [-skullR * 0.35, skullR * 0.35]) {
+    g.beginPath();
+    g.ellipse(cx + xo, skullCy - skullR * 0.18, skullR * 0.2, skullR * 0.22, 0, Math.PI * 0.95, Math.PI * 1.7);
+    g.stroke();
+  }
+  // Nasal cavity (inverted triangle)
+  g.fillStyle = '#000';
+  g.beginPath();
+  g.moveTo(cx - skullR * 0.1, skullCy + skullR * 0.08);
+  g.lineTo(cx, skullCy + skullR * 0.34);
+  g.lineTo(cx + skullR * 0.1, skullCy + skullR * 0.08);
+  g.closePath();
+  g.fill();
+  // Teeth row (top jaw)
+  g.fillStyle = '#0a0606';
+  for (let i = -3; i <= 3; i++) {
+    g.fillRect(cx + i * skullR * 0.13 - skullR * 0.05, skullCy + skullR * 0.46, skullR * 0.1, skullR * 0.18);
+  }
+  // Lower jaw bone highlight
+  g.strokeStyle = 'rgba(255, 240, 210, 0.18)';
+  g.lineWidth = 1.5;
+  g.beginPath();
+  g.ellipse(cx, skullCy + skullR * 0.68, skullR * 0.62, skullR * 0.3, 0, Math.PI * 1.05, Math.PI * 1.95);
+  g.stroke();
+
+  // ----- Crossed bones beneath the skull -----
+  const bonesCy = H * 0.5;
+  const boneLen = W * 0.42;
+  const boneThick = W * 0.05;
+  for (const angle of [Math.PI / 4, -Math.PI / 4]) {
+    g.save();
+    g.translate(cx, bonesCy);
+    g.rotate(angle);
+    // Shaft shadow
+    g.fillStyle = 'rgba(0, 0, 0, 0.55)';
+    g.fillRect(-boneLen / 2 + 4, -boneThick / 2 + 4, boneLen, boneThick);
+    // Shaft fill (bone gradient)
+    const sg2 = g.createLinearGradient(0, -boneThick / 2, 0, boneThick / 2);
+    sg2.addColorStop(0, '#d4c294');
+    sg2.addColorStop(0.5, '#a89a78');
+    sg2.addColorStop(1, '#5a503c');
+    g.fillStyle = sg2;
+    g.fillRect(-boneLen / 2, -boneThick / 2, boneLen, boneThick);
+    // Bulbous ends — two knobs per side
+    g.fillStyle = sg2;
+    g.beginPath();
+    g.arc(-boneLen / 2 + boneThick * 0.4, -boneThick * 0.5, boneThick * 0.55, 0, Math.PI * 2);
+    g.arc(-boneLen / 2 + boneThick * 0.4, boneThick * 0.5, boneThick * 0.55, 0, Math.PI * 2);
+    g.arc(boneLen / 2 - boneThick * 0.4, -boneThick * 0.5, boneThick * 0.55, 0, Math.PI * 2);
+    g.arc(boneLen / 2 - boneThick * 0.4, boneThick * 0.5, boneThick * 0.55, 0, Math.PI * 2);
+    g.fill();
+    // Top highlight
+    g.fillStyle = 'rgba(255, 240, 210, 0.18)';
+    g.fillRect(-boneLen / 2 + 6, -boneThick / 2 + 2, boneLen - 12, 2);
+    g.restore();
+  }
+
+  // ----- Rune inscription (3 rows of variable-width glyphs) -----
+  const inscriptionTop = H * 0.66;
+  const rowH = H * 0.08;
+  const glyphWidths = [
+    [22, 18, 24, 20, 26, 16, 22, 20, 18],
+    [20, 22, 18, 24, 22, 20, 18, 24],
+    [18, 24, 20, 22, 18],
+  ];
+  for (let row = 0; row < 3; row++) {
+    const widths = glyphWidths[row];
+    const totalW = widths.reduce((a, b) => a + b, 0) + (widths.length - 1) * 14;
+    let x = cx - totalW / 2;
+    const yc = inscriptionTop + row * rowH;
+    for (let i = 0; i < widths.length; i++) {
+      const w = widths[i];
+      const glyph = (row * 7 + i * 11) % 6;
+      // Carved (recessed dark) glyph
+      g.fillStyle = '#080604';
+      g.save();
+      g.translate(x + w / 2, yc);
+      if (glyph === 0) {
+        // I-bar (vertical with serifs)
+        g.fillRect(-w * 0.1, -rowH * 0.32, w * 0.2, rowH * 0.64);
+        g.fillRect(-w * 0.45, -rowH * 0.32, w * 0.9, rowH * 0.12);
+        g.fillRect(-w * 0.45, rowH * 0.2, w * 0.9, rowH * 0.12);
+      } else if (glyph === 1) {
+        // Triangle
+        g.beginPath();
+        g.moveTo(0, -rowH * 0.32);
+        g.lineTo(w * 0.45, rowH * 0.32);
+        g.lineTo(-w * 0.45, rowH * 0.32);
+        g.closePath();
+        g.fill();
+      } else if (glyph === 2) {
+        // X-cross
+        g.lineWidth = w * 0.18;
+        g.strokeStyle = '#080604';
+        g.beginPath();
+        g.moveTo(-w * 0.4, -rowH * 0.32);
+        g.lineTo(w * 0.4, rowH * 0.32);
+        g.moveTo(w * 0.4, -rowH * 0.32);
+        g.lineTo(-w * 0.4, rowH * 0.32);
+        g.stroke();
+      } else if (glyph === 3) {
+        // Diamond
+        g.beginPath();
+        g.moveTo(0, -rowH * 0.36);
+        g.lineTo(w * 0.45, 0);
+        g.lineTo(0, rowH * 0.36);
+        g.lineTo(-w * 0.45, 0);
+        g.closePath();
+        g.fill();
+      } else if (glyph === 4) {
+        // Half-circle
+        g.beginPath();
+        g.arc(0, 0, w * 0.42, Math.PI, Math.PI * 2);
+        g.lineTo(-w * 0.42, 0);
+        g.closePath();
+        g.fill();
+      } else {
+        // Y-rune
+        g.lineWidth = w * 0.18;
+        g.strokeStyle = '#080604';
+        g.beginPath();
+        g.moveTo(0, rowH * 0.32);
+        g.lineTo(0, 0);
+        g.moveTo(0, 0);
+        g.lineTo(-w * 0.4, -rowH * 0.32);
+        g.moveTo(0, 0);
+        g.lineTo(w * 0.4, -rowH * 0.32);
+        g.stroke();
+      }
+      // Carved highlight along the top-left edge (suggests engraved depth)
+      g.strokeStyle = 'rgba(255, 240, 210, 0.18)';
+      g.lineWidth = 1;
+      g.restore();
+      x += w + 14;
+    }
+  }
+
+  // ----- Surface weathering — irregular cracks across the slab -----
+  g.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+  g.lineWidth = 1;
+  for (let i = 0; i < 6; i++) {
+    let x = Math.random() * W;
+    let y = Math.random() * H;
+    g.beginPath();
+    g.moveTo(x, y);
+    const segs = 4 + Math.floor(Math.random() * 4);
+    for (let s = 0; s < segs; s++) {
+      x += (Math.random() - 0.5) * (W / 6);
+      y += (Math.random() - 0.5) * (H / 8);
+      g.lineTo(x, y);
+    }
+    g.stroke();
+  }
+
+  // Grit
+  for (let i = 0; i < 1500; i++) {
+    g.fillStyle = `rgba(0, 0, 0, ${Math.random() * 0.16})`;
+    g.fillRect(Math.random() * W, Math.random() * H, 1, 1);
+  }
+
+  // Corner vignette
+  const vig = g.createRadialGradient(W / 2, H / 2, W * 0.35, W / 2, H / 2, W * 0.7);
+  vig.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  vig.addColorStop(1, 'rgba(0, 0, 0, 0.5)');
+  g.fillStyle = vig;
+  g.fillRect(0, 0, W, H);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.anisotropy = 8;
+  tex.needsUpdate = true;
+  GRAVE_PLAQUE_TEXTURE_CACHE.tex = tex;
+  return tex;
+}
+
 /** Engraved stone tomb plaque embedded in the wall. */
 function GravePlaque({ fixture }: { fixture: Fixture }) {
   const t = wallTorchTransform(fixture.x, fixture.y, fixture.wallSide!);
+  const tex = useMemo(() => buildGravePlaqueTexture(), []);
   return (
     <group position={[t.x, 1.15, t.z]} rotation={[0, t.ry, 0]}>
-      {/* Outer slab */}
+      {/* Outer slab — bevelled stone frame */}
       <mesh position={[0, 0, 0.02]} castShadow>
         <boxGeometry args={[0.52, 0.78, 0.04]} />
         <meshStandardMaterial color="#3e3631" roughness={0.95} />
       </mesh>
-      {/* Inner darker recessed panel */}
+      {/* Inner recessed engraved panel — skull, crossed bones, runes all baked into texture */}
       <mesh position={[0, -0.03, 0.043]}>
         <planeGeometry args={[0.42, 0.62]} />
-        <meshStandardMaterial color="#1f1a16" roughness={1} />
+        <meshStandardMaterial map={tex} roughness={1} />
       </mesh>
-      {/* Skull engraving */}
-      <mesh position={[0, 0.16, 0.045]}>
-        <sphereGeometry args={[0.075, 14, 12]} />
-        <meshStandardMaterial color="#a89a78" roughness={0.9} />
-      </mesh>
-      <mesh position={[0, 0.12, 0.108]}>
-        <boxGeometry args={[0.08, 0.025, 0.04]} />
-        <meshStandardMaterial color="#a89a78" roughness={0.9} />
-      </mesh>
-      {/* Eye sockets */}
-      {[-0.022, 0.022].map((xo) => (
-        <mesh key={`e-${xo}`} position={[xo, 0.17, 0.112]}>
-          <sphereGeometry args={[0.014, 8, 8]} />
-          <meshBasicMaterial color="#0a0608" />
-        </mesh>
-      ))}
-      {/* Crossed bones beneath */}
-      <mesh position={[0, 0.02, 0.046]} rotation={[0, 0, Math.PI / 4]}>
-        <boxGeometry args={[0.22, 0.022, 0.001]} />
-        <meshStandardMaterial color="#a89a78" roughness={0.9} />
-      </mesh>
-      <mesh position={[0, 0.02, 0.046]} rotation={[0, 0, -Math.PI / 4]}>
-        <boxGeometry args={[0.22, 0.022, 0.001]} />
-        <meshStandardMaterial color="#a89a78" roughness={0.9} />
-      </mesh>
-      {/* Engraved "inscription" rows below */}
-      {[-0.12, -0.18, -0.24].map((y, i) => (
-        <mesh key={`i-${i}`} position={[0, y, 0.046]}>
-          <boxGeometry args={[0.28 - i * 0.04, 0.014, 0.001]} />
-          <meshStandardMaterial color="#0e0a08" />
-        </mesh>
-      ))}
     </group>
   );
 }
@@ -1326,81 +1819,267 @@ function WallPainting({ fixture }: { fixture: Fixture }) {
 
 /**
  * Procedural oil-portrait texture. Paints a dim, shrouded figure on a moody
- * cracked-parchment background. `variant` selects palette + silhouette pose.
+ * cracked-canvas background, with chiaroscuro lighting, hood folds, lapel
+ * trim, and a faux-rune name plate. `variant` selects palette + silhouette pose.
+ *
+ * Rendered at 512×640 — a full doubling of the previous resolution — so the
+ * portrait holds up close at typical player viewing distances.
  */
 function buildPortraitTexture(variant: number): THREE.CanvasTexture {
-  const W = 256;
-  const H = 320;
+  const W = 512;
+  const H = 640;
   const c = document.createElement('canvas');
   c.width = W;
   c.height = H;
   const g = c.getContext('2d')!;
-  // Mood backdrop — sepia / olive / burgundy variants
+  // Mood palette — sepia / olive / burgundy / royal variants
   const palettes = [
-    { bg0: '#3a2818', bg1: '#080604', figure: '#0a0608', accent: '#c4a23f' },
-    { bg0: '#1a2418', bg1: '#040804', figure: '#080a06', accent: '#a8c46c' },
-    { bg0: '#2a1820', bg1: '#080406', figure: '#0a0608', accent: '#aa3a4a' },
-    { bg0: '#1a1830', bg1: '#040408', figure: '#0a0814', accent: '#9a78ff' },
+    { bg0: '#4a3220', bg1: '#080604', figure: '#0a0608', skin: '#2a1c14', accent: '#c4a23f', name: '#d8b850' },
+    { bg0: '#1e2a1c', bg1: '#040804', figure: '#080a06', skin: '#1c2418', accent: '#a8c46c', name: '#bcd084' },
+    { bg0: '#36202a', bg1: '#080406', figure: '#0a0608', skin: '#241818', accent: '#aa3a4a', name: '#d05060' },
+    { bg0: '#221c40', bg1: '#040408', figure: '#0a0814', skin: '#1a1830', accent: '#9a78ff', name: '#c4a8ff' },
   ];
   const p = palettes[variant % palettes.length];
-  const grad = g.createRadialGradient(W / 2, H * 0.35, 0, W / 2, H * 0.5, W * 0.8);
+
+  // Mottled canvas backdrop (radial spotlight + brush-stroke variation)
+  const grad = g.createRadialGradient(W / 2, H * 0.36, 0, W / 2, H * 0.5, W * 0.9);
   grad.addColorStop(0, p.bg0);
   grad.addColorStop(1, p.bg1);
   g.fillStyle = grad;
   g.fillRect(0, 0, W, H);
-  // Crack / canvas-weave texture
-  g.strokeStyle = 'rgba(0,0,0,0.18)';
+  // Painterly brush-stroke variation across the background
+  for (let i = 0; i < 240; i++) {
+    const x = Math.random() * W;
+    const y = Math.random() * H;
+    const w = 6 + Math.random() * 24;
+    const h = 1 + Math.random() * 2.4;
+    const a = (Math.random() - 0.5) * 0.6;
+    const tone = Math.random() < 0.5 ? 'rgba(255,220,170,' : 'rgba(0,0,0,';
+    g.save();
+    g.translate(x, y);
+    g.rotate(a);
+    g.fillStyle = `${tone}${0.04 + Math.random() * 0.07})`;
+    g.fillRect(-w / 2, -h / 2, w, h);
+    g.restore();
+  }
+
+  // Hairline craquelure (irregular branching cracks across the surface)
+  g.strokeStyle = 'rgba(0, 0, 0, 0.22)';
   g.lineWidth = 1;
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < 28; i++) {
+    let x = Math.random() * W;
+    let y = Math.random() * H;
     g.beginPath();
-    g.moveTo(Math.random() * W, Math.random() * H);
-    g.lineTo(Math.random() * W, Math.random() * H);
+    g.moveTo(x, y);
+    const segs = 3 + Math.floor(Math.random() * 4);
+    for (let s = 0; s < segs; s++) {
+      x += (Math.random() - 0.5) * 80;
+      y += (Math.random() - 0.5) * 80;
+      g.lineTo(x, y);
+    }
     g.stroke();
   }
+
   // Shrouded figure silhouette
   const cx = W / 2;
   const cy = H * 0.55;
   g.fillStyle = p.figure;
   // Shoulders / cloak
   g.beginPath();
-  g.moveTo(cx - 80, H);
-  g.bezierCurveTo(cx - 90, cy + 40, cx - 70, cy - 20, cx - 50, cy - 40);
-  g.lineTo(cx + 50, cy - 40);
-  g.bezierCurveTo(cx + 70, cy - 20, cx + 90, cy + 40, cx + 80, H);
+  g.moveTo(cx - 160, H);
+  g.bezierCurveTo(cx - 180, cy + 80, cx - 140, cy - 40, cx - 100, cy - 80);
+  g.lineTo(cx + 100, cy - 80);
+  g.bezierCurveTo(cx + 140, cy - 40, cx + 180, cy + 80, cx + 160, H);
   g.closePath();
   g.fill();
-  // Head — oval void with collar above shoulders
-  g.beginPath();
-  g.ellipse(cx, cy - 60, 38, 48, 0, 0, Math.PI * 2);
-  g.fill();
-  // Hood ridge highlight
-  g.strokeStyle = `${p.accent}55`;
+
+  // Cloak folds — vertical highlight ridges
+  g.strokeStyle = `${p.accent}26`;
   g.lineWidth = 2;
+  for (const xo of [-110, -70, -32, 32, 70, 110]) {
+    g.beginPath();
+    g.moveTo(cx + xo * 0.7, cy + 10);
+    g.quadraticCurveTo(cx + xo * 0.85, cy + 100, cx + xo, H - 12);
+    g.stroke();
+  }
+  // Cloak fold shadows (offset slightly so we get a chiseled drape)
+  g.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+  g.lineWidth = 3;
+  for (const xo of [-110, -70, -32, 32, 70, 110]) {
+    g.beginPath();
+    g.moveTo(cx + xo * 0.7 + 6, cy + 14);
+    g.quadraticCurveTo(cx + xo * 0.85 + 6, cy + 104, cx + xo + 6, H - 8);
+    g.stroke();
+  }
+
+  // Lapel trim along the collar opening
+  g.strokeStyle = `${p.accent}88`;
+  g.lineWidth = 4;
   g.beginPath();
-  g.moveTo(cx - 40, cy - 60);
-  g.bezierCurveTo(cx - 50, cy - 100, cx + 50, cy - 100, cx + 40, cy - 60);
+  g.moveTo(cx - 96, cy - 76);
+  g.quadraticCurveTo(cx, cy - 30, cx + 96, cy - 76);
   g.stroke();
-  // Single glowing accent eye
+  // Trim highlight
+  g.strokeStyle = 'rgba(255, 220, 180, 0.35)';
+  g.lineWidth = 1;
+  g.beginPath();
+  g.moveTo(cx - 96, cy - 78);
+  g.quadraticCurveTo(cx, cy - 32, cx + 96, cy - 78);
+  g.stroke();
+
+  // Face — softly lit oval (left side caught by the light, right side in shadow)
+  g.fillStyle = p.skin;
+  g.beginPath();
+  g.ellipse(cx, cy - 130, 70, 92, 0, 0, Math.PI * 2);
+  g.fill();
+  // Chiaroscuro shadow on the right side of the face
+  const faceShadow = g.createLinearGradient(cx - 30, cy - 130, cx + 70, cy - 130);
+  faceShadow.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  faceShadow.addColorStop(1, 'rgba(0, 0, 0, 0.65)');
+  g.save();
+  g.beginPath();
+  g.ellipse(cx, cy - 130, 70, 92, 0, 0, Math.PI * 2);
+  g.clip();
+  g.fillStyle = faceShadow;
+  g.fillRect(cx - 70, cy - 222, 140, 184);
+  g.restore();
+  // Cheek highlight (lit side)
+  const cheek = g.createRadialGradient(cx - 26, cy - 118, 4, cx - 26, cy - 118, 28);
+  cheek.addColorStop(0, 'rgba(255, 220, 180, 0.32)');
+  cheek.addColorStop(1, 'rgba(255, 220, 180, 0)');
+  g.save();
+  g.beginPath();
+  g.ellipse(cx, cy - 130, 70, 92, 0, 0, Math.PI * 2);
+  g.clip();
+  g.fillStyle = cheek;
+  g.fillRect(cx - 70, cy - 200, 140, 140);
+  g.restore();
+
+  // Hood drape over the head — figure-color arch with accent ridge
+  g.fillStyle = p.figure;
+  g.beginPath();
+  g.moveTo(cx - 76, cy - 64);
+  g.bezierCurveTo(cx - 96, cy - 160, cx + 96, cy - 160, cx + 76, cy - 64);
+  g.lineTo(cx + 60, cy - 100);
+  g.bezierCurveTo(cx + 70, cy - 150, cx - 70, cy - 150, cx - 60, cy - 100);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = `${p.accent}66`;
+  g.lineWidth = 3;
+  g.beginPath();
+  g.moveTo(cx - 76, cy - 64);
+  g.bezierCurveTo(cx - 96, cy - 160, cx + 96, cy - 160, cx + 76, cy - 64);
+  g.stroke();
+
+  // Eye sockets — small shadow pits
+  const eyeY = cy - 138;
+  g.fillStyle = 'rgba(0, 0, 0, 0.85)';
+  g.beginPath();
+  g.ellipse(cx - 22, eyeY, 8, 5, 0, 0, Math.PI * 2);
+  g.fill();
+  g.beginPath();
+  g.ellipse(cx + 22, eyeY, 8, 5, 0, 0, Math.PI * 2);
+  g.fill();
+  // Glowing accent eye(s) — sometimes one, sometimes both
   if ((variant % 3) !== 0) {
     g.fillStyle = p.accent;
     g.beginPath();
-    g.arc(cx + (variant % 2 ? 8 : -8), cy - 64, 3, 0, Math.PI * 2);
+    g.arc(cx + (variant % 2 ? 22 : -22), eyeY, 3.2, 0, Math.PI * 2);
     g.fill();
+    // Faint glow halo
+    const glow = g.createRadialGradient(cx + (variant % 2 ? 22 : -22), eyeY, 1, cx + (variant % 2 ? 22 : -22), eyeY, 18);
+    glow.addColorStop(0, `${p.accent}88`);
+    glow.addColorStop(1, `${p.accent}00`);
+    g.fillStyle = glow;
+    g.fillRect(0, 0, W, H);
   }
-  // Decorative crest at bottom (name plaque area)
-  g.fillStyle = `${p.accent}88`;
-  g.fillRect(cx - 60, H - 38, 120, 4);
-  // Subtle vignette
-  const vig = g.createRadialGradient(cx, H * 0.5, W * 0.25, cx, H * 0.5, W * 0.6);
-  vig.addColorStop(0, 'rgba(0,0,0,0)');
-  vig.addColorStop(1, 'rgba(0,0,0,0.55)');
+
+  // Brow shadow line
+  g.strokeStyle = 'rgba(0, 0, 0, 0.55)';
+  g.lineWidth = 2;
+  g.beginPath();
+  g.moveTo(cx - 36, eyeY - 12);
+  g.quadraticCurveTo(cx, eyeY - 18, cx + 36, eyeY - 12);
+  g.stroke();
+  // Nose-bridge shadow
+  g.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+  g.lineWidth = 1.5;
+  g.beginPath();
+  g.moveTo(cx + 4, eyeY - 4);
+  g.quadraticCurveTo(cx + 8, eyeY + 32, cx + 2, eyeY + 50);
+  g.stroke();
+  // Mouth — thin shadow line
+  g.strokeStyle = 'rgba(0, 0, 0, 0.55)';
+  g.lineWidth = 1.5;
+  g.beginPath();
+  g.moveTo(cx - 16, eyeY + 64);
+  g.quadraticCurveTo(cx, eyeY + 68, cx + 16, eyeY + 64);
+  g.stroke();
+
+  // Name plate at the bottom — recessed band with faux-rune inscription
+  const plateY = H - 70;
+  const plateH = 30;
+  g.fillStyle = 'rgba(0, 0, 0, 0.55)';
+  g.fillRect(cx - 140, plateY, 280, plateH);
+  g.strokeStyle = `${p.accent}88`;
+  g.lineWidth = 2;
+  g.strokeRect(cx - 140, plateY, 280, plateH);
+  // Faux-rune glyphs (faintly glowing dashes — short uneven runes)
+  g.fillStyle = p.name;
+  for (let i = 0; i < 11; i++) {
+    const gx = cx - 130 + i * 24;
+    const gy = plateY + plateH / 2;
+    const glyph = (variant * 7 + i * 13) % 6;
+    g.save();
+    g.translate(gx, gy);
+    if (glyph === 0) {
+      g.fillRect(-1, -8, 2, 16);
+    } else if (glyph === 1) {
+      g.fillRect(-1, -8, 2, 16);
+      g.fillRect(-1, -8, 8, 2);
+    } else if (glyph === 2) {
+      g.fillRect(-1, -8, 2, 16);
+      g.fillRect(-1, 6, 8, 2);
+    } else if (glyph === 3) {
+      g.beginPath();
+      g.moveTo(-7, -8);
+      g.lineTo(7, 8);
+      g.lineTo(7, 6);
+      g.lineTo(-5, -8);
+      g.closePath();
+      g.fill();
+    } else if (glyph === 4) {
+      g.beginPath();
+      g.arc(0, 0, 7, 0, Math.PI * 2);
+      g.fill();
+      g.globalCompositeOperation = 'destination-out';
+      g.beginPath();
+      g.arc(0, 0, 4, 0, Math.PI * 2);
+      g.fill();
+      g.globalCompositeOperation = 'source-over';
+    } else {
+      g.fillRect(-7, -1, 14, 2);
+      g.fillRect(-1, -7, 2, 14);
+    }
+    g.restore();
+  }
+
+  // Subtle vignette — darken corners so the portrait reads as candle-lit
+  const vig = g.createRadialGradient(cx, H * 0.5, W * 0.3, cx, H * 0.5, W * 0.75);
+  vig.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  vig.addColorStop(1, 'rgba(0, 0, 0, 0.7)');
   g.fillStyle = vig;
   g.fillRect(0, 0, W, H);
+  // Final faint surface noise (so the canvas-weave is visible up close)
+  for (let i = 0; i < 800; i++) {
+    g.fillStyle = `rgba(0, 0, 0, ${Math.random() * 0.18})`;
+    g.fillRect(Math.random() * W, Math.random() * H, 1, 1);
+  }
 
   const tex = new THREE.CanvasTexture(c);
   tex.magFilter = THREE.LinearFilter;
   tex.minFilter = THREE.LinearMipmapLinearFilter;
-  tex.anisotropy = 4;
+  tex.anisotropy = 8;
   tex.needsUpdate = true;
   return tex;
 }
@@ -1689,7 +2368,7 @@ function DynamicTorchLights({ fixtures }: { fixtures: Fixture[] }) {
       light.position.set(p.x, p.y, p.z);
       // Flicker, indexed per-light so they don't sync
       const t = s.clock.elapsedTime * 7 + slot * 1.3;
-      const base = theme.torchLightIntensity;
+      const base = theme.torchLightIntensity * BRIGHTNESS_BOOST;
       light.intensity = base + Math.sin(t) * 0.45 + Math.sin(t * 1.7) * 0.25;
     }
   });
@@ -1720,15 +2399,16 @@ function TorchLight() {
   const ref = useRef<THREE.PointLight>(null);
   const camera = useThree((s) => s.camera);
   const theme = useTheme();
+  const baseIntensity = 8 * BRIGHTNESS_BOOST;
   useFrame((s) => {
     if (!ref.current) return;
     ref.current.position.copy(camera.position);
     ref.current.position.y = EYE_HEIGHT + 0.05;
     const t = s.clock.elapsedTime;
-    ref.current.intensity = 8 + Math.sin(t * 11) * 0.6 + Math.sin(t * 23) * 0.3;
+    ref.current.intensity = baseIntensity + Math.sin(t * 11) * 0.6 + Math.sin(t * 23) * 0.3;
   });
   return (
-    <pointLight ref={ref} color={theme.torchColor} intensity={8} distance={13} decay={1.4} />
+    <pointLight ref={ref} color={theme.torchColor} intensity={baseIntensity} distance={13} decay={1.4} />
   );
 }
 
@@ -1736,75 +2416,274 @@ function TorchLight() {
 // Procedural textures (so we don't need asset files)
 // =============================================================================
 
+/**
+ * Ashlar masonry: varied-width blocks in running-bond, dark recessed mortar,
+ * top-edge highlights, bottom-edge shadows, hairline cracks, edge chips.
+ * Per-block face brightness derives from `theme.wall.base` so each floor theme
+ * still recolors cleanly; `theme.wall.accent` drives moss / gold / arcane flecks.
+ * Painted at 256² to match the approved preview density.
+ */
 function buildWallTexture(theme: FloorTheme): THREE.CanvasTexture {
+  const W = 256;
+  const H = 256;
   const c = document.createElement('canvas');
-  c.width = 128;
-  c.height = 128;
+  c.width = W;
+  c.height = H;
   const g = c.getContext('2d')!;
-  g.fillStyle = theme.wall.base;
-  g.fillRect(0, 0, 128, 128);
-  // brick pattern
-  g.strokeStyle = theme.wall.mortar;
-  g.lineWidth = 2;
-  for (let y = 0; y < 128; y += 24) {
-    const off = (y / 24) % 2 === 0 ? 0 : 24;
-    for (let x = -24; x < 128; x += 48) {
-      g.strokeRect(x + off, y, 48, 24);
+
+  // Mortar (dark grout shows in the joints + chips)
+  g.fillStyle = theme.wall.mortar;
+  g.fillRect(0, 0, W, H);
+
+  const baseRgb = hexToRgb(theme.wall.base);
+  const rows = 6;
+  const rowH = H / rows;
+  for (let row = 0; row < rows; row++) {
+    const y = row * rowH;
+    // Running-bond offset: alternate rows nudged ~70% of a row width
+    const offset = row % 2 === 0 ? 0 : rowH * 0.7;
+    let x = -offset;
+    while (x < W) {
+      const blockW = rowH * (1.2 + Math.random() * 1.5);
+      // Block face: brightness varies around theme base, with a small additive
+      // floor so dark themes don't crush to black.
+      const shade = 0.55 + Math.random() * 0.35;
+      const lift = 0.14;
+      const r = Math.min(255, Math.floor(baseRgb.r * (shade + lift)));
+      const gg = Math.min(255, Math.floor(baseRgb.g * (shade + lift)));
+      const b = Math.min(255, Math.floor(baseRgb.b * (shade + lift)));
+      const inset = Math.max(2, W / 96);
+      g.fillStyle = `rgb(${r}, ${gg}, ${b})`;
+      g.fillRect(x + inset, y + inset, blockW - inset * 2, rowH - inset * 2);
+      // Top edge highlight — catches torchlight
+      g.fillStyle = 'rgba(255, 220, 200, 0.08)';
+      g.fillRect(x + inset, y + inset, blockW - inset * 2, Math.max(1, rowH * 0.06));
+      // Bottom edge shadow
+      g.fillStyle = 'rgba(0, 0, 0, 0.35)';
+      g.fillRect(x + inset, y + rowH - inset - rowH * 0.08, blockW - inset * 2, rowH * 0.08);
+      // Hairline cracks (sometimes)
+      if (Math.random() < 0.25) {
+        g.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+        g.lineWidth = 1;
+        let cx = x + inset + Math.random() * (blockW - inset * 2);
+        let cy = y + inset + Math.random() * (rowH - inset * 2);
+        g.beginPath();
+        g.moveTo(cx, cy);
+        for (let i = 0; i < 4; i++) {
+          cx += (Math.random() - 0.5) * (W / 12);
+          cy += (Math.random() - 0.5) * (rowH / 3);
+          g.lineTo(cx, cy);
+        }
+        g.stroke();
+      }
+      // Edge chips — corner of block reveals mortar
+      if (Math.random() < 0.4) {
+        g.fillStyle = theme.wall.mortar;
+        const cx = x + inset + Math.random() * (blockW - inset * 2);
+        const cy = Math.random() < 0.5 ? y + inset : y + rowH - inset;
+        g.beginPath();
+        g.arc(cx, cy, 1.5 + Math.random() * 3, 0, Math.PI * 2);
+        g.fill();
+      }
+      x += blockW;
     }
   }
-  // accent (mossy stone, gold trim, etc.) — sparse smudges
+
+  // Theme accent (moss / gold / arcane shimmer) — sparse smudges
   const accentRgb = hexToRgb(theme.wall.accent);
-  for (let i = 0; i < 24; i++) {
+  for (let i = 0; i < 16; i++) {
     g.fillStyle = `rgba(${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b}, ${theme.wall.accentAlpha * Math.random()})`;
     const sz = 4 + Math.random() * 10;
-    g.fillRect(Math.random() * 128, Math.random() * 128, sz, sz * 0.4);
+    g.fillRect(Math.random() * W, Math.random() * H, sz, sz * 0.5);
   }
-  // grit noise
-  for (let i = 0; i < 600; i++) {
-    g.fillStyle = `rgba(0,0,0,${Math.random() * 0.18})`;
-    g.fillRect(Math.random() * 128, Math.random() * 128, 1, 1);
+  // Grit (sub-pixel noise to break up flat areas)
+  for (let i = 0; i < 1000; i++) {
+    g.fillStyle = `rgba(0, 0, 0, ${Math.random() * 0.2})`;
+    g.fillRect(Math.random() * W, Math.random() * H, 1, 1);
   }
+
   const tex = new THREE.CanvasTexture(c);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   tex.magFilter = THREE.NearestFilter;
   return tex;
 }
 
+/**
+ * Cobblestone floor: irregular polygonal stones with per-stone shading, top-rim
+ * highlight arcs, bottom-edge shadow arcs, and occasional hairline cracks across
+ * the stone face. Sits in dark grout (`theme.floor.border`). The theme-tinted
+ * `sparkleColor` preserves the wet-stone shimmer / candle dust feel.
+ * Painted at 256² to match the approved preview density.
+ */
 function buildFloorTexture(theme: FloorTheme): THREE.CanvasTexture {
+  const W = 256;
+  const H = 256;
   const c = document.createElement('canvas');
-  c.width = 128;
-  c.height = 128;
+  c.width = W;
+  c.height = H;
   const g = c.getContext('2d')!;
-  g.fillStyle = theme.floor.base;
-  g.fillRect(0, 0, 128, 128);
-  g.strokeStyle = theme.floor.border;
-  g.lineWidth = 2;
-  g.strokeRect(2, 2, 124, 124);
-  // theme-colored sparkles (wet stone shimmer / candle dust / etc.)
-  for (let i = 0; i < 400; i++) {
+
+  // Dark grout base
+  g.fillStyle = theme.floor.border;
+  g.fillRect(0, 0, W, H);
+
+  const baseRgb = hexToRgb(theme.floor.base);
+  const cols = 7;
+  const rows = 7;
+  const tile = W / cols;
+
+  for (let r = 0; r < rows; r++) {
+    for (let col = 0; col < cols; col++) {
+      const cx = (col + 0.5) * tile + (Math.random() - 0.5) * tile * 0.18;
+      const cy = (r + 0.5) * tile + (Math.random() - 0.5) * tile * 0.18;
+      // Per-stone shading: brightness varies around the theme base
+      const shade = 0.5 + Math.random() * 0.45;
+      const lift = 0.15;
+      const rr = Math.min(255, Math.floor(baseRgb.r * (shade + lift)));
+      const gg = Math.min(255, Math.floor(baseRgb.g * (shade + lift)));
+      const bb = Math.min(255, Math.floor(baseRgb.b * (shade + lift)));
+      g.fillStyle = `rgb(${rr}, ${gg}, ${bb})`;
+      // Irregular polygon (6–8 sides) with jittered radii — reads as a worn cobble
+      const sides = 6 + Math.floor(Math.random() * 3);
+      const baseR = tile * 0.46 * (0.85 + Math.random() * 0.3);
+      g.beginPath();
+      for (let i = 0; i < sides; i++) {
+        const a = (i / sides) * Math.PI * 2 + Math.random() * 0.25;
+        const rad = baseR * (0.85 + Math.random() * 0.25);
+        const px = cx + Math.cos(a) * rad;
+        const py = cy + Math.sin(a) * rad;
+        if (i === 0) g.moveTo(px, py);
+        else g.lineTo(px, py);
+      }
+      g.closePath();
+      g.fill();
+      // Top-rim highlight
+      g.strokeStyle = `rgba(255, 210, 180, ${0.06 + Math.random() * 0.08})`;
+      g.lineWidth = 1;
+      g.beginPath();
+      g.arc(cx, cy, baseR * 0.85, Math.PI * 1.15, Math.PI * 1.85);
+      g.stroke();
+      // Bottom-edge shadow
+      g.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+      g.beginPath();
+      g.arc(cx, cy, baseR * 0.85, Math.PI * 0.15, Math.PI * 0.85);
+      g.stroke();
+      // Occasional cobble crack
+      if (Math.random() < 0.15) {
+        g.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+        g.lineWidth = 1;
+        g.beginPath();
+        g.moveTo(cx - baseR * 0.4, cy + (Math.random() - 0.5) * baseR * 0.6);
+        g.lineTo(cx + baseR * 0.4, cy + (Math.random() - 0.5) * baseR * 0.6);
+        g.stroke();
+      }
+    }
+  }
+
+  // Theme sparkles in the grout (candle dust / damp shimmer)
+  for (let i = 0; i < 120; i++) {
     g.fillStyle = `${theme.floor.sparkleColor}${theme.floor.sparkleAlpha * Math.random()})`;
-    g.fillRect(Math.random() * 128, Math.random() * 128, 2, 2);
+    g.fillRect(Math.random() * W, Math.random() * H, 1, 1);
   }
-  for (let i = 0; i < 800; i++) {
-    g.fillStyle = `rgba(0,0,0,${Math.random() * 0.15})`;
-    g.fillRect(Math.random() * 128, Math.random() * 128, 1, 1);
+  // Grit
+  for (let i = 0; i < 600; i++) {
+    g.fillStyle = `rgba(0, 0, 0, ${Math.random() * 0.15})`;
+    g.fillRect(Math.random() * W, Math.random() * H, 1, 1);
   }
+
   const tex = new THREE.CanvasTexture(c);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   return tex;
 }
 
+/**
+ * Cross-vaulted ceiling: four rib arcs sweep from each corner to meet at a
+ * central rosette boss. A radial lightening at the center suggests dome
+ * curvature; grime density still respects `theme.ceiling.grimeAlpha`.
+ *
+ * Each ceiling cell renders its own copy of the texture (1:1 UV), so the
+ * rosette appears once per cell — like a real cathedral's repeating vault bays.
+ * Painted at 256² to match the approved preview density.
+ */
 function buildCeilingTexture(theme: FloorTheme): THREE.CanvasTexture {
+  const W = 256;
+  const H = 256;
   const c = document.createElement('canvas');
-  c.width = 128;
-  c.height = 128;
+  c.width = W;
+  c.height = H;
   const g = c.getContext('2d')!;
-  g.fillStyle = theme.ceiling.base;
-  g.fillRect(0, 0, 128, 128);
-  for (let i = 0; i < 300; i++) {
-    g.fillStyle = `rgba(0,0,0,${Math.random() * theme.ceiling.grimeAlpha})`;
-    g.fillRect(Math.random() * 128, Math.random() * 128, 2, 2);
+
+  // Radial gradient — center slightly lighter than edges (dome curvature)
+  const baseRgb = hexToRgb(theme.ceiling.base);
+  const lighter = `rgb(${Math.min(255, baseRgb.r + 18)}, ${Math.min(255, baseRgb.g + 14)}, ${Math.min(255, baseRgb.b + 18)})`;
+  const grad = g.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, W * 0.7);
+  grad.addColorStop(0, lighter);
+  grad.addColorStop(1, theme.ceiling.base);
+  g.fillStyle = grad;
+  g.fillRect(0, 0, W, H);
+
+  // Four rib arcs from each corner — structural lines of a cross vault
+  const ribs: Array<[number, number, number, number]> = [
+    [0, 0, 0, Math.PI / 2],
+    [W, 0, Math.PI / 2, Math.PI],
+    [W, H, Math.PI, Math.PI * 1.5],
+    [0, H, Math.PI * 1.5, Math.PI * 2],
+  ];
+  g.strokeStyle = 'rgba(0, 0, 0, 0.55)';
+  g.lineWidth = 4;
+  for (const [cx, cy, a0, a1] of ribs) {
+    g.beginPath();
+    g.arc(cx, cy, W * 0.52, a0, a1);
+    g.stroke();
   }
+  // Outer companion shadow — gives ribs three-dimensional thickness
+  g.strokeStyle = 'rgba(0, 0, 0, 0.25)';
+  g.lineWidth = 1.5;
+  for (const [cx, cy, a0, a1] of ribs) {
+    g.beginPath();
+    g.arc(cx, cy, W * 0.58, a0, a1);
+    g.stroke();
+  }
+
+  // Central rosette boss
+  const cx = W / 2;
+  const cy = H / 2;
+  const bossR = W * 0.07;
+  // Darker accent (60% of base) — the keystone disc is recessed/shadowed
+  g.fillStyle = `rgb(${Math.floor(baseRgb.r * 0.6)}, ${Math.floor(baseRgb.g * 0.6)}, ${Math.floor(baseRgb.b * 0.6)})`;
+  g.beginPath();
+  g.arc(cx, cy, bossR, 0, Math.PI * 2);
+  g.fill();
+  g.strokeStyle = 'rgba(255, 200, 160, 0.18)';
+  g.lineWidth = 1;
+  g.beginPath();
+  g.arc(cx, cy, bossR, 0, Math.PI * 2);
+  g.stroke();
+  // 8-petal motif inside the boss
+  g.fillStyle = 'rgba(255, 200, 160, 0.1)';
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    g.beginPath();
+    g.moveTo(cx, cy);
+    g.lineTo(cx + Math.cos(a) * bossR * 0.9, cy + Math.sin(a) * bossR * 0.9);
+    g.lineTo(cx + Math.cos(a + 0.3) * bossR * 0.6, cy + Math.sin(a + 0.3) * bossR * 0.6);
+    g.closePath();
+    g.fill();
+  }
+
+  // Subtle transverse ribs along canvas edges — when two ceiling cells abut,
+  // their edge ribs combine into a single thin dark joint, giving the vault
+  // bays clear separation (like real cathedral transverse arches).
+  g.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+  g.lineWidth = 1;
+  g.strokeRect(0.5, 0.5, W - 1, H - 1);
+
+  // Grime — fixed count, alpha varies per theme
+  for (let i = 0; i < 600; i++) {
+    g.fillStyle = `rgba(0, 0, 0, ${Math.random() * theme.ceiling.grimeAlpha})`;
+    g.fillRect(Math.random() * W, Math.random() * H, 1, 1);
+  }
+
   const tex = new THREE.CanvasTexture(c);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   return tex;
@@ -1833,9 +2712,16 @@ export function DungeonScene() {
     >
       <ThemeCtx.Provider value={theme}>
         <fog attach="fog" args={[theme.fog, theme.fogNear, theme.fogFar]} />
-        <ambientLight intensity={theme.ambient.intensity} color={theme.ambient.color} />
+        <ambientLight
+          intensity={theme.ambient.intensity * BRIGHTNESS_BOOST}
+          color={theme.ambient.color}
+        />
         <hemisphereLight
-          args={[theme.hemisphere.sky, theme.hemisphere.ground, theme.hemisphere.intensity]}
+          args={[
+            theme.hemisphere.sky,
+            theme.hemisphere.ground,
+            theme.hemisphere.intensity * BRIGHTNESS_BOOST,
+          ]}
         />
         <TorchLight />
         <DynamicTorchLights fixtures={map.fixtures ?? []} />

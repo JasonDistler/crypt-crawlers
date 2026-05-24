@@ -1,4 +1,4 @@
-import type { Cell, DungeonMap, Fixture } from '@/types';
+import type { Cell, DungeonMap, Facing, Fixture } from '@/types';
 import { bossForFloor, pickElite, pickEncounter } from '@/data/enemies';
 import { mulberry32, randInt, shuffleInPlace } from '@/util/rng';
 
@@ -281,6 +281,10 @@ export function generateFloor(opts: {
   cells[spawn.y][spawn.x].seen = true;
   cells[spawn.y][spawn.x].visible = true;
 
+  // Pick a facing where the player is NOT staring at a wall, and ideally is
+  // looking down a corridor that leads out of the spawn room.
+  const spawnFacing = chooseSpawnFacing(cells, width, height, spawn, spawnRoom);
+
   const fixtures = placeFixtures(cells, width, height, rooms, rng);
 
   return {
@@ -288,9 +292,79 @@ export function generateFloor(opts: {
     height,
     cells,
     spawn,
+    spawnFacing,
     floor: opts.floor,
     fixtures,
   };
+}
+
+const FACING_DX: Record<Facing, number> = { 0: 0, 1: 1, 2: 0, 3: -1 };
+const FACING_DY: Record<Facing, number> = { 0: -1, 1: 0, 2: 1, 3: 0 };
+
+/**
+ * Picks an initial facing for the player such that:
+ *   1. The cell directly in front of them is never a wall.
+ *   2. Whenever possible, the player is looking down a corridor that exits
+ *      the spawn room (we cast a ray and prefer facings that escape the
+ *      room's bounding box without hitting a wall first).
+ *   3. As a tie-breaker, we prefer the facing with the longest open line of
+ *      sight (so the player gets the most dramatic "look down the hallway"
+ *      moment when they spawn).
+ */
+function chooseSpawnFacing(
+  cells: Cell[][],
+  width: number,
+  height: number,
+  spawn: { x: number; y: number },
+  spawnRoom: Room,
+): Facing {
+  const maxRayLength = Math.max(width, height);
+  const scored: Array<{ facing: Facing; openSteps: number; exitsRoom: boolean }> = [];
+  for (const facing of [0, 1, 2, 3] as Facing[]) {
+    const dx = FACING_DX[facing];
+    const dy = FACING_DY[facing];
+    let x = spawn.x + dx;
+    let y = spawn.y + dy;
+    let openSteps = 0;
+    let exitsRoom = false;
+    while (
+      x >= 0 && x < width &&
+      y >= 0 && y < height &&
+      cells[y][x].kind !== 'wall' &&
+      openSteps < maxRayLength
+    ) {
+      openSteps++;
+      const outsideRoom =
+        x < spawnRoom.x || x >= spawnRoom.x + spawnRoom.w ||
+        y < spawnRoom.y || y >= spawnRoom.y + spawnRoom.h;
+      if (outsideRoom) {
+        exitsRoom = true;
+        break;
+      }
+      x += dx;
+      y += dy;
+    }
+    scored.push({ facing, openSteps, exitsRoom });
+  }
+
+  // Prefer facings that exit the spawn room into a corridor.
+  const exits = scored.filter((s) => s.exitsRoom);
+  if (exits.length > 0) {
+    exits.sort((a, b) => b.openSteps - a.openSteps);
+    return exits[0].facing;
+  }
+
+  // No corridor visible — at least pick a facing whose adjacent cell isn't a
+  // wall (i.e. at least one open step ahead).
+  const nonWall = scored.filter((s) => s.openSteps > 0);
+  if (nonWall.length > 0) {
+    nonWall.sort((a, b) => b.openSteps - a.openSteps);
+    return nonWall[0].facing;
+  }
+
+  // Pathological case (1×1 room with no exit). Should never happen since the
+  // generator guarantees a connected dungeon — but fall back to East.
+  return 1;
 }
 
 // =============================================================================

@@ -59,6 +59,15 @@ interface RunState {
 
   // Pending: are we waiting for an animation? (used by camera tween)
   isMoving: boolean;
+
+  // ---- Cheats ----
+  /**
+   * God mode: when true, all player damage is suppressed (both out-of-combat
+   * hazard / flee damage and in-combat enemy hits and DoT ticks). HP is also
+   * kept clamped to maxHp on activation. Toggled by typing IDDQD after the
+   * backtick (see App.tsx cheat handler).
+   */
+  godMode: boolean;
   // ===== actions =====
   startRun: (crawlerId: string) => void;
   toMenu: () => void;
@@ -93,6 +102,10 @@ interface RunState {
 
   // Floor transition
   digToNextFloor: () => void;
+
+  // Cheats
+  /** Toggle (or explicitly set) god-mode. Heals to full when turning on. */
+  setGodMode: (on?: boolean) => void;
 
   // Internal helpers (exposed for components if needed)
   _enterCombat: (
@@ -202,6 +215,7 @@ export const useRunStore = create<RunState>((set, get) => ({
   combatIsElite: false,
   rewardOffers: [],
   isMoving: false,
+  godMode: false,
 
   // ---------------------------------------------------------------------------
   startRun: (crawlerId) => {
@@ -222,7 +236,7 @@ export const useRunStore = create<RunState>((set, get) => ({
       map,
       px: map.spawn.x,
       py: map.spawn.y,
-      facing: 1,
+      facing: map.spawnFacing,
       bossesKilled: [],
       combat: null,
       combatIsElite: false,
@@ -372,7 +386,7 @@ export const useRunStore = create<RunState>((set, get) => ({
     const s = get();
     if (!s.combat) return;
     if (s.combat.isBoss) return;
-    const dmg = Math.max(1, Math.floor(s.maxHp * 0.1));
+    const dmg = s.godMode ? 0 : Math.max(1, Math.floor(s.maxHp * 0.1));
     const newHp = Math.max(0, s.hp - dmg);
     if (newHp <= 0) {
       get()._endCombatDefeat();
@@ -572,8 +586,26 @@ export const useRunStore = create<RunState>((set, get) => ({
       map: newMap,
       px: newMap.spawn.x,
       py: newMap.spawn.y,
-      facing: 1,
+      facing: newMap.spawnFacing,
     });
+  },
+
+  // ---------------------------------------------------------------------------
+  // Cheats
+  // ---------------------------------------------------------------------------
+  setGodMode: (on) => {
+    const s = get();
+    const next = on === undefined ? !s.godMode : on;
+    // Turning god mode on heals to full so the player sees immediate effect.
+    const patch: Partial<RunState> = { godMode: next };
+    if (next) {
+      if (s.maxHp > 0) patch.hp = s.maxHp;
+      if (s.combat) {
+        s.combat.hp = s.combat.maxHp;
+        patch.combat = s.combat;
+      }
+    }
+    set(patch);
   },
 }));
 
@@ -626,8 +658,14 @@ function stepRelative(
   } else if (cell.kind === 'hazard' && !cell.cleared) {
     // Spike trap: damage on step, then disarmed for the rest of the run.
     const floor = s.map.floor;
-    const damage = 4 + floor * 2 + Math.floor(Math.random() * 3); // 6-9 on F1, ~24-27 on F10
+    const damage = s.godMode
+      ? 0
+      : 4 + floor * 2 + Math.floor(Math.random() * 3); // 6-9 on F1, ~24-27 on F10
     cell.cleared = true;
+    if (s.godMode) {
+      useRunStore.getState().showNotice('🛡 Spike trap deflected (GOD)', 'good', 1800);
+      return;
+    }
     const newHp = Math.max(0, s.hp - damage);
     sfx.defeat(); // sharp metallic-y clank stands in for "trap snap"
     if (newHp <= 0) {
@@ -799,8 +837,12 @@ function resolveTurn(
       const absorbed = Math.min(shield, dmg);
       combat.statuses.shield = shield - absorbed;
       dmg -= absorbed;
-      combat.hp = Math.max(0, combat.hp - dmg);
-      combat.log.push(`${def.name} hits for ${dmg}${absorbed ? ` (${absorbed} blocked)` : ''}`);
+      if (s.godMode) {
+        combat.log.push(`${def.name}'s ${dmg} damage is deflected by GOD`);
+      } else {
+        combat.hp = Math.max(0, combat.hp - dmg);
+        combat.log.push(`${def.name} hits for ${dmg}${absorbed ? ` (${absorbed} blocked)` : ''}`);
+      }
     } else if (intent.kind === 'defend' && intent.block) {
       e.statuses.shield = (e.statuses.shield ?? 0) + intent.block;
       combat.log.push(`${def.name} blocks +${intent.block}`);
@@ -830,8 +872,12 @@ function resolveTurn(
   const playerBurn = combat.statuses.burn ?? 0;
   const playerDot = playerBleed + playerBurn;
   if (playerDot > 0) {
-    combat.hp = Math.max(0, combat.hp - playerDot);
-    combat.log.push(`You suffer ${playerDot} (bleed/burn)`);
+    if (s.godMode) {
+      combat.log.push(`GOD shrugs off ${playerDot} (bleed/burn)`);
+    } else {
+      combat.hp = Math.max(0, combat.hp - playerDot);
+      combat.log.push(`You suffer ${playerDot} (bleed/burn)`);
+    }
   }
   if (playerBleed > 0) combat.statuses.bleed = playerBleed - 1;
   if (playerBurn > 0) combat.statuses.burn = playerBurn - 1;

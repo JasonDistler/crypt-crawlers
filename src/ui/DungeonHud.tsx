@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useRunStore, remainingFoes } from '@/state/runStore';
 import { getCrawler } from '@/data/crawlers';
@@ -75,11 +75,38 @@ export function DungeonHud() {
     return () => clearTimeout(t);
   }, [map?.floor, map]);
 
+  // Portal-opened banner: surfaces the moment the last foe on this floor falls,
+  // so the player knows the stair portal has unsealed. We track per-floor so
+  // the message only fires on the locked → unlocked transition (not on floor
+  // entry, and not repeatedly if foes count stays at 0).
+  const portalUnlocked = foes.encounters === 0 && !foes.bossAlive;
+  const [portalBanner, setPortalBanner] = useState<string | null>(null);
+  const floorAtLastCheckRef = useRef<number | null>(null);
+  const portalWasUnlockedRef = useRef<boolean>(false);
+  useEffect(() => {
+    if (!map) return;
+    const currentFloor = map.floor;
+    const newFloor = floorAtLastCheckRef.current !== currentFloor;
+    if (newFloor) {
+      // Fresh floor — set baseline. If the floor somehow spawns with zero foes
+      // we treat it as "already open" (no banner — there's nothing to vanquish).
+      floorAtLastCheckRef.current = currentFloor;
+      portalWasUnlockedRef.current = portalUnlocked;
+      return;
+    }
+    if (!portalWasUnlockedRef.current && portalUnlocked) {
+      setPortalBanner('The portal has been opened');
+      portalWasUnlockedRef.current = true;
+      const t = setTimeout(() => setPortalBanner(null), 4000);
+      return () => clearTimeout(t);
+    }
+    portalWasUnlockedRef.current = portalUnlocked;
+  }, [portalUnlocked, map?.floor, map]);
+
   if (!map || !crawler) return null;
 
   const cell = map.cells[py]?.[px];
   const canDig = cell?.kind === 'shovel';
-  const portalUnlocked = foes.encounters === 0 && !foes.bossAlive;
   const canOpenChest = cell?.kind === 'chest' && !cell.cleared;
   const canUseShrine = cell?.kind === 'shrine' && !cell.cleared;
   const shrineKind = cell?.shrineKind;
@@ -101,6 +128,23 @@ export function DungeonHud() {
           >
             <div className="floor-banner-title">{floorBanner}</div>
             <div className="floor-banner-blurb">{getFloorTheme(map.floor).blurb}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {portalBanner && (
+          <motion.div
+            key="portal-banner"
+            className="portal-banner"
+            initial={{ y: -30, opacity: 0, scale: 0.85 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: -20, opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.55, ease: 'backOut' }}
+          >
+            <div className="portal-banner-glow" />
+            <div className="portal-banner-title">{portalBanner}</div>
+            <div className="portal-banner-blurb">Find the violet swirl and descend.</div>
           </motion.div>
         )}
       </AnimatePresence>

@@ -159,16 +159,22 @@ export interface Fixture {
   variant?: number;
 }
 
+export type Facing = 0 | 1 | 2 | 3; // 0=N(-y), 1=E(+x), 2=S(+y), 3=W(-x)
+
 export interface DungeonMap {
   width: number;
   height: number;
   cells: Cell[][]; // cells[y][x]
   spawn: { x: number; y: number };
+  /**
+   * Initial facing for the player on spawn. Chosen by the generator so the
+   * player is never staring at a wall — and prefers to be aimed down a corridor
+   * leading out of the spawn room.
+   */
+  spawnFacing: Facing;
   floor: number;
   fixtures: Fixture[];
 }
-
-export type Facing = 0 | 1 | 2 | 3; // 0=N(-y), 1=E(+x), 2=S(+y), 3=W(-x)
 
 // ---------- Game mode ----------
 

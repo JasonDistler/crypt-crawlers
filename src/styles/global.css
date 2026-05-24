@@ -73,3 +73,92 @@ h1, h2, h3 {
   font-weight: 400;
   letter-spacing: 0.06em;
 }
+
+/* ---------------- Cheat input indicator ------------------------------- */
+/* Doom-style ` → type-code prompt. Shows the live buffer at the top edge
+   so the player has feedback that their keystrokes are being captured.   */
+.cheat-indicator {
+  position: fixed;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 14px;
+  background: rgba(8, 4, 12, 0.92);
+  border: 1px solid rgba(255, 220, 120, 0.55);
+  border-radius: 4px;
+  box-shadow: 0 0 16px rgba(255, 220, 120, 0.25);
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #ffe18a;
+  pointer-events: none;
+  user-select: none;
+}
+
+.cheat-indicator-prompt {
+  color: #ffce6c;
+  font-weight: 700;
+}
+
+.cheat-indicator-buffer {
+  min-width: 60px;
+  text-align: left;
+  color: #fff4c8;
+  text-shadow: 0 0 4px rgba(255, 220, 120, 0.5);
+}
+
+.cheat-indicator-caret {
+  display: inline-block;
+  width: 8px;
+  height: 14px;
+  background: #ffce6c;
+  animation: cheat-caret-blink 0.7s steps(1) infinite;
+}
+
+@keyframes cheat-caret-blink {
+  0%, 50%   { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
+}
+
+/* ---------------- God mode badge -------------------------------------- */
+/* Persistent corner badge that confirms IDDQD is active in every mode.   */
+.god-mode-badge {
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  z-index: 1000;
+  padding: 4px 12px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #fff4c8;
+  background: linear-gradient(180deg, rgba(168, 60, 196, 0.85), rgba(80, 20, 100, 0.92));
+  border: 1px solid rgba(232, 168, 255, 0.75);
+  border-radius: 4px;
+  box-shadow:
+    0 0 18px rgba(196, 110, 255, 0.55),
+    inset 0 0 8px rgba(255, 220, 255, 0.25);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6), 0 0 6px rgba(255, 220, 255, 0.4);
+  pointer-events: none;
+  user-select: none;
+  animation: god-mode-pulse 2.2s ease-in-out infinite alternate;
+}
+
+@keyframes god-mode-pulse {
+  from {
+    box-shadow:
+      0 0 12px rgba(196, 110, 255, 0.4),
+      inset 0 0 6px rgba(255, 220, 255, 0.2);
+  }
+  to {
+    box-shadow:
+      0 0 26px rgba(196, 110, 255, 0.75),
+      inset 0 0 12px rgba(255, 220, 255, 0.4);
+  }
+}
