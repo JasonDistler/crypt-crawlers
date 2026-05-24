@@ -1057,6 +1057,340 @@ function Spiderweb({ fixture }: { fixture: Fixture }) {
 }
 
 // =============================================================================
+// Wall dressing — chains / banner / grave plaque / rune / portrait
+//
+// All five share `wallTorchTransform` placement: position the group at the
+// wall face with +Z pointing into the room, then build out the silhouette
+// in local coordinates.
+// =============================================================================
+
+/** A pair of rusted manacles dangling from short chains. */
+function WallChains({ fixture }: { fixture: Fixture }) {
+  const t = wallTorchTransform(fixture.x, fixture.y, fixture.wallSide!);
+  const v = fixture.variant ?? 0;
+  // Slight per-instance sway so they don't all hang identically.
+  const tilt = (((v % 21) - 10) / 10) * 0.05;
+  const links = 7;
+  return (
+    <group position={[t.x, 1.5, t.z]} rotation={[0, t.ry, 0]}>
+      <group rotation={[0, 0, tilt]}>
+        {/* Two wall brackets the chains anchor to */}
+        {[-0.13, 0.13].map((xo) => (
+          <mesh key={`b-${xo}`} position={[xo, 0.45, 0.02]}>
+            <boxGeometry args={[0.07, 0.05, 0.04]} />
+            <meshStandardMaterial color="#3a2820" metalness={0.7} roughness={0.55} />
+          </mesh>
+        ))}
+        {/* Vertical chain links — alternating orientation gives the woven look */}
+        {[-0.13, 0.13].map((xo) =>
+          Array.from({ length: links }).map((_, i) => (
+            <mesh
+              key={`l-${xo}-${i}`}
+              position={[xo, 0.36 - i * 0.07, 0.045]}
+              rotation={[Math.PI / 2, (i % 2) * (Math.PI / 2), 0]}
+            >
+              <torusGeometry args={[0.022, 0.008, 6, 10]} />
+              <meshStandardMaterial color="#2a1f1c" metalness={0.65} roughness={0.6} />
+            </mesh>
+          )),
+        )}
+        {/* Manacles at the bottom */}
+        {[-0.13, 0.13].map((xo) => (
+          <mesh key={`m-${xo}`} position={[xo, -0.18, 0.06]} rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[0.045, 0.014, 6, 14]} />
+            <meshStandardMaterial color="#3a2820" metalness={0.7} roughness={0.55} />
+          </mesh>
+        ))}
+        {/* A single drop of dried blood on the lower wall */}
+        <mesh position={[0, -0.4, 0.022]}>
+          <planeGeometry args={[0.04, 0.12]} />
+          <meshStandardMaterial color="#3a0608" roughness={1} />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
+/** Tattered heraldic banner — pole + cloth + emblem. */
+function WallBanner({ fixture }: { fixture: Fixture }) {
+  const t = wallTorchTransform(fixture.x, fixture.y, fixture.wallSide!);
+  const v = fixture.variant ?? 0;
+  const palettes = [
+    { cloth: '#5a1820', sigil: '#c4922b' }, // crimson + gold
+    { cloth: '#1a2840', sigil: '#dccfa6' }, // navy + bone
+    { cloth: '#2a1840', sigil: '#c4a23f' }, // royal purple + gold
+    { cloth: '#1c2a18', sigil: '#a8c46c' }, // moss + pale
+  ];
+  const p = palettes[v % palettes.length];
+  // Three vertical jagged "frayed" rectangles at the bottom for tatter.
+  const tatterOffsets = [
+    -0.18, -0.06, 0.08, 0.2,
+  ];
+  return (
+    <group position={[t.x, 1.55, t.z]} rotation={[0, t.ry, 0]}>
+      {/* Horizontal pole */}
+      <mesh position={[0, 0.45, 0.04]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.022, 0.022, 0.56, 8]} />
+        <meshStandardMaterial color="#3a2820" roughness={0.85} metalness={0.3} />
+      </mesh>
+      {/* Pole end caps */}
+      {[-0.28, 0.28].map((xo) => (
+        <mesh key={`c-${xo}`} position={[xo, 0.45, 0.04]}>
+          <sphereGeometry args={[0.032, 10, 10]} />
+          <meshStandardMaterial color="#c4922b" metalness={0.7} roughness={0.4} />
+        </mesh>
+      ))}
+      {/* Main cloth panel */}
+      <mesh position={[0, -0.05, 0.05]}>
+        <planeGeometry args={[0.5, 0.95]} />
+        <meshStandardMaterial color={p.cloth} roughness={1} side={THREE.DoubleSide} />
+      </mesh>
+      {/* Tattered hem */}
+      {tatterOffsets.map((xo, i) => (
+        <mesh key={`t-${i}`} position={[xo, -0.6, 0.051]}>
+          <planeGeometry args={[0.08, 0.16 + (i % 2) * 0.06]} />
+          <meshStandardMaterial color={p.cloth} roughness={1} side={THREE.DoubleSide} />
+        </mesh>
+      ))}
+      {/* Sigil — ring + cross-glyph (emissive so it reads in low light) */}
+      <mesh position={[0, 0.05, 0.054]}>
+        <ringGeometry args={[0.07, 0.095, 24]} />
+        <meshBasicMaterial color={p.sigil} toneMapped={false} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh position={[0, 0.05, 0.055]}>
+        <boxGeometry args={[0.022, 0.16, 0.002]} />
+        <meshBasicMaterial color={p.sigil} toneMapped={false} />
+      </mesh>
+      <mesh position={[0, 0.05, 0.055]}>
+        <boxGeometry args={[0.16, 0.022, 0.002]} />
+        <meshBasicMaterial color={p.sigil} toneMapped={false} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Engraved stone tomb plaque embedded in the wall. */
+function GravePlaque({ fixture }: { fixture: Fixture }) {
+  const t = wallTorchTransform(fixture.x, fixture.y, fixture.wallSide!);
+  return (
+    <group position={[t.x, 1.15, t.z]} rotation={[0, t.ry, 0]}>
+      {/* Outer slab */}
+      <mesh position={[0, 0, 0.02]} castShadow>
+        <boxGeometry args={[0.52, 0.78, 0.04]} />
+        <meshStandardMaterial color="#3e3631" roughness={0.95} />
+      </mesh>
+      {/* Inner darker recessed panel */}
+      <mesh position={[0, -0.03, 0.043]}>
+        <planeGeometry args={[0.42, 0.62]} />
+        <meshStandardMaterial color="#1f1a16" roughness={1} />
+      </mesh>
+      {/* Skull engraving */}
+      <mesh position={[0, 0.16, 0.045]}>
+        <sphereGeometry args={[0.075, 14, 12]} />
+        <meshStandardMaterial color="#a89a78" roughness={0.9} />
+      </mesh>
+      <mesh position={[0, 0.12, 0.108]}>
+        <boxGeometry args={[0.08, 0.025, 0.04]} />
+        <meshStandardMaterial color="#a89a78" roughness={0.9} />
+      </mesh>
+      {/* Eye sockets */}
+      {[-0.022, 0.022].map((xo) => (
+        <mesh key={`e-${xo}`} position={[xo, 0.17, 0.112]}>
+          <sphereGeometry args={[0.014, 8, 8]} />
+          <meshBasicMaterial color="#0a0608" />
+        </mesh>
+      ))}
+      {/* Crossed bones beneath */}
+      <mesh position={[0, 0.02, 0.046]} rotation={[0, 0, Math.PI / 4]}>
+        <boxGeometry args={[0.22, 0.022, 0.001]} />
+        <meshStandardMaterial color="#a89a78" roughness={0.9} />
+      </mesh>
+      <mesh position={[0, 0.02, 0.046]} rotation={[0, 0, -Math.PI / 4]}>
+        <boxGeometry args={[0.22, 0.022, 0.001]} />
+        <meshStandardMaterial color="#a89a78" roughness={0.9} />
+      </mesh>
+      {/* Engraved "inscription" rows below */}
+      {[-0.12, -0.18, -0.24].map((y, i) => (
+        <mesh key={`i-${i}`} position={[0, y, 0.046]}>
+          <boxGeometry args={[0.28 - i * 0.04, 0.014, 0.001]} />
+          <meshStandardMaterial color="#0e0a08" />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** Glowing arcane rune carved into the wall. Color follows the floor theme. */
+function RuneMark({ fixture }: { fixture: Fixture }) {
+  const t = wallTorchTransform(fixture.x, fixture.y, fixture.wallSide!);
+  const theme = useTheme();
+  const v = fixture.variant ?? 0;
+  // Pick one of two rune patterns deterministically.
+  const pattern = v % 2;
+  return (
+    <group position={[t.x, 1.45, t.z]} rotation={[0, t.ry, 0]}>
+      {/* Outer ring */}
+      <mesh position={[0, 0, 0.013]}>
+        <ringGeometry args={[0.16, 0.19, 32]} />
+        <meshBasicMaterial color={theme.torchColor} toneMapped={false} side={THREE.DoubleSide} />
+      </mesh>
+      {/* Inner ring */}
+      <mesh position={[0, 0, 0.014]}>
+        <ringGeometry args={[0.085, 0.1, 24]} />
+        <meshBasicMaterial color={theme.torchFlame} toneMapped={false} side={THREE.DoubleSide} />
+      </mesh>
+      {/* Cross or diamond glyph */}
+      {pattern === 0 ? (
+        <>
+          <mesh position={[0, 0, 0.015]}>
+            <boxGeometry args={[0.035, 0.32, 0.002]} />
+            <meshBasicMaterial color={theme.torchColor} toneMapped={false} />
+          </mesh>
+          <mesh position={[0, 0, 0.015]}>
+            <boxGeometry args={[0.32, 0.035, 0.002]} />
+            <meshBasicMaterial color={theme.torchColor} toneMapped={false} />
+          </mesh>
+        </>
+      ) : (
+        <>
+          <mesh position={[0, 0, 0.015]} rotation={[0, 0, Math.PI / 4]}>
+            <boxGeometry args={[0.035, 0.3, 0.002]} />
+            <meshBasicMaterial color={theme.torchColor} toneMapped={false} />
+          </mesh>
+          <mesh position={[0, 0, 0.015]} rotation={[0, 0, -Math.PI / 4]}>
+            <boxGeometry args={[0.035, 0.3, 0.002]} />
+            <meshBasicMaterial color={theme.torchColor} toneMapped={false} />
+          </mesh>
+        </>
+      )}
+      {/* Faint halo billboard */}
+      <mesh position={[0, 0, 0.012]}>
+        <circleGeometry args={[0.24, 24]} />
+        <meshBasicMaterial
+          color={theme.torchColor}
+          transparent
+          opacity={0.18}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+/** Dusty oil portrait of an ancestor (procedural canvas painting). */
+function WallPainting({ fixture }: { fixture: Fixture }) {
+  const t = wallTorchTransform(fixture.x, fixture.y, fixture.wallSide!);
+  const v = fixture.variant ?? 0;
+  const tex = useMemo(() => buildPortraitTexture(v), [v]);
+  return (
+    <group position={[t.x, 1.4, t.z]} rotation={[0, t.ry, 0]}>
+      {/* Gold outer frame */}
+      <mesh position={[0, 0, 0.018]} castShadow>
+        <boxGeometry args={[0.55, 0.7, 0.04]} />
+        <meshStandardMaterial color="#7a5a18" metalness={0.7} roughness={0.45} />
+      </mesh>
+      {/* Inner shadow plate */}
+      <mesh position={[0, 0, 0.04]}>
+        <planeGeometry args={[0.46, 0.6]} />
+        <meshStandardMaterial color="#0a0608" roughness={1} />
+      </mesh>
+      {/* Painting canvas */}
+      <mesh position={[0, 0, 0.042]}>
+        <planeGeometry args={[0.42, 0.56]} />
+        <meshStandardMaterial map={tex} roughness={1} />
+      </mesh>
+      {/* Top hanging nail / hook (visible above the frame) */}
+      <mesh position={[0, 0.4, 0.025]}>
+        <boxGeometry args={[0.04, 0.04, 0.03]} />
+        <meshStandardMaterial color="#3a2820" metalness={0.6} roughness={0.5} />
+      </mesh>
+    </group>
+  );
+}
+
+/**
+ * Procedural oil-portrait texture. Paints a dim, shrouded figure on a moody
+ * cracked-parchment background. `variant` selects palette + silhouette pose.
+ */
+function buildPortraitTexture(variant: number): THREE.CanvasTexture {
+  const W = 256;
+  const H = 320;
+  const c = document.createElement('canvas');
+  c.width = W;
+  c.height = H;
+  const g = c.getContext('2d')!;
+  // Mood backdrop — sepia / olive / burgundy variants
+  const palettes = [
+    { bg0: '#3a2818', bg1: '#080604', figure: '#0a0608', accent: '#c4a23f' },
+    { bg0: '#1a2418', bg1: '#040804', figure: '#080a06', accent: '#a8c46c' },
+    { bg0: '#2a1820', bg1: '#080406', figure: '#0a0608', accent: '#aa3a4a' },
+    { bg0: '#1a1830', bg1: '#040408', figure: '#0a0814', accent: '#9a78ff' },
+  ];
+  const p = palettes[variant % palettes.length];
+  const grad = g.createRadialGradient(W / 2, H * 0.35, 0, W / 2, H * 0.5, W * 0.8);
+  grad.addColorStop(0, p.bg0);
+  grad.addColorStop(1, p.bg1);
+  g.fillStyle = grad;
+  g.fillRect(0, 0, W, H);
+  // Crack / canvas-weave texture
+  g.strokeStyle = 'rgba(0,0,0,0.18)';
+  g.lineWidth = 1;
+  for (let i = 0; i < 14; i++) {
+    g.beginPath();
+    g.moveTo(Math.random() * W, Math.random() * H);
+    g.lineTo(Math.random() * W, Math.random() * H);
+    g.stroke();
+  }
+  // Shrouded figure silhouette
+  const cx = W / 2;
+  const cy = H * 0.55;
+  g.fillStyle = p.figure;
+  // Shoulders / cloak
+  g.beginPath();
+  g.moveTo(cx - 80, H);
+  g.bezierCurveTo(cx - 90, cy + 40, cx - 70, cy - 20, cx - 50, cy - 40);
+  g.lineTo(cx + 50, cy - 40);
+  g.bezierCurveTo(cx + 70, cy - 20, cx + 90, cy + 40, cx + 80, H);
+  g.closePath();
+  g.fill();
+  // Head — oval void with collar above shoulders
+  g.beginPath();
+  g.ellipse(cx, cy - 60, 38, 48, 0, 0, Math.PI * 2);
+  g.fill();
+  // Hood ridge highlight
+  g.strokeStyle = `${p.accent}55`;
+  g.lineWidth = 2;
+  g.beginPath();
+  g.moveTo(cx - 40, cy - 60);
+  g.bezierCurveTo(cx - 50, cy - 100, cx + 50, cy - 100, cx + 40, cy - 60);
+  g.stroke();
+  // Single glowing accent eye
+  if ((variant % 3) !== 0) {
+    g.fillStyle = p.accent;
+    g.beginPath();
+    g.arc(cx + (variant % 2 ? 8 : -8), cy - 64, 3, 0, Math.PI * 2);
+    g.fill();
+  }
+  // Decorative crest at bottom (name plaque area)
+  g.fillStyle = `${p.accent}88`;
+  g.fillRect(cx - 60, H - 38, 120, 4);
+  // Subtle vignette
+  const vig = g.createRadialGradient(cx, H * 0.5, W * 0.25, cx, H * 0.5, W * 0.6);
+  vig.addColorStop(0, 'rgba(0,0,0,0)');
+  vig.addColorStop(1, 'rgba(0,0,0,0.55)');
+  g.fillStyle = vig;
+  g.fillRect(0, 0, W, H);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.anisotropy = 4;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+// =============================================================================
 // Hazard: spike trap
 // =============================================================================
 
@@ -1266,6 +1600,16 @@ function Fixtures({ fixtures }: { fixtures: Fixture[] }) {
             return <BonePile key={`f-${i}`} fixture={f} />;
           case 'spiderweb':
             return <Spiderweb key={`f-${i}`} fixture={f} />;
+          case 'chains':
+            return <WallChains key={`f-${i}`} fixture={f} />;
+          case 'banner':
+            return <WallBanner key={`f-${i}`} fixture={f} />;
+          case 'gravePlaque':
+            return <GravePlaque key={`f-${i}`} fixture={f} />;
+          case 'runeMark':
+            return <RuneMark key={`f-${i}`} fixture={f} />;
+          case 'paintingFrame':
+            return <WallPainting key={`f-${i}`} fixture={f} />;
         }
       })}
     </>

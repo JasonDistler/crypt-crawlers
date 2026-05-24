@@ -504,12 +504,63 @@ function placeFixtures(
         if (usedWall.has(key(x, y, side))) continue;
         const roll = rng();
         if (roll < 0.18) {
+          // Torches — most common; carry the dynamic lighting too.
           fixtures.push({ kind: 'wallTorch', x, y, wallSide: side });
           usedWall.add(key(x, y, side));
-        } else if (roll < 0.24) {
-          // ~6% chance — sparser than torches; menacing prison-skeleton flavor.
+        } else if (roll < 0.23) {
+          // ~5% — menacing prison-skeleton flavor.
           fixtures.push({
             kind: 'hangingSkeleton',
+            x,
+            y,
+            wallSide: side,
+            variant: Math.floor(rng() * 1000),
+          });
+          usedWall.add(key(x, y, side));
+        } else if (roll < 0.27) {
+          // ~4% — empty rusted manacles (the prisoners are long gone).
+          fixtures.push({
+            kind: 'chains',
+            x,
+            y,
+            wallSide: side,
+            variant: Math.floor(rng() * 1000),
+          });
+          usedWall.add(key(x, y, side));
+        } else if (roll < 0.30) {
+          // ~3% — heraldic tattered banner.
+          fixtures.push({
+            kind: 'banner',
+            x,
+            y,
+            wallSide: side,
+            variant: Math.floor(rng() * 1000),
+          });
+          usedWall.add(key(x, y, side));
+        } else if (roll < 0.33) {
+          // ~3% — engraved tomb plaque embedded in the wall.
+          fixtures.push({
+            kind: 'gravePlaque',
+            x,
+            y,
+            wallSide: side,
+            variant: Math.floor(rng() * 1000),
+          });
+          usedWall.add(key(x, y, side));
+        } else if (roll < 0.35) {
+          // ~2% — glowing arcane rune (rare, eye-catching).
+          fixtures.push({
+            kind: 'runeMark',
+            x,
+            y,
+            wallSide: side,
+            variant: Math.floor(rng() * 1000),
+          });
+          usedWall.add(key(x, y, side));
+        } else if (roll < 0.38) {
+          // ~3% — dusty oil portrait of a noble who probably became a lich.
+          fixtures.push({
+            kind: 'paintingFrame',
             x,
             y,
             wallSide: side,

@@ -131,7 +131,17 @@ export interface Cell {
 }
 
 export interface Fixture {
-  kind: 'wallTorch' | 'hangingSkeleton' | 'bonePile' | 'spiderweb';
+  kind:
+    | 'wallTorch'
+    | 'hangingSkeleton'
+    | 'bonePile'
+    | 'spiderweb'
+    // New wall-mounted dungeon dressing
+    | 'chains'
+    | 'banner'
+    | 'gravePlaque'
+    | 'runeMark'
+    | 'paintingFrame';
   /** Cell coordinates the fixture sits in (floor cell). */
   x: number;
   y: number;
