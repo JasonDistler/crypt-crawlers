@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { useRunStore, remainingFoes } from '@/state/runStore';
 import { getEnemy } from '@/data/enemies';
 import { paintEnemy } from '@/art/portraits';
+import { onEnemyImageLoad, hasEnemyImage } from '@/art/enemyImages';
 import type { Cell, Facing, Fixture } from '@/types';
 import { type FloorTheme, getFloorTheme } from './themes';
 
@@ -334,22 +335,25 @@ function buildEnemyCardTexture(
   g.fillText(def.name, 26, titleY + titleH / 2);
 
   // ---- Portrait box ----
-  // Paint the procedural enemy illustration to an offscreen canvas first,
-  // then composite it into the card's portrait slot. paintEnemy always
-  // fills 0..w / 0..h, so it needs its own buffer.
+  // Paint the enemy illustration to an offscreen canvas first, then composite
+  // it into the card's portrait slot. paintEnemy returns true when it drew
+  // the real artwork; if false, we'll need to repaint once the image lands.
   const portraitTop = titleY + titleH + 8;
   const portraitH = 200;
   const portraitX = 18;
   const portraitW = W - 36;
-  const off = document.createElement('canvas');
-  off.width = portraitW;
-  off.height = portraitH;
-  paintEnemy(off.getContext('2d')!, def.id, portraitW, portraitH);
-  g.drawImage(off, portraitX, portraitTop);
-  // Portrait frame edge
-  g.strokeStyle = frameOuter;
-  g.lineWidth = 2;
-  g.strokeRect(portraitX, portraitTop, portraitW, portraitH);
+  const drawPortrait = () => {
+    const off = document.createElement('canvas');
+    off.width = portraitW;
+    off.height = portraitH;
+    const ready = paintEnemy(off.getContext('2d')!, def.id, portraitW, portraitH);
+    g.drawImage(off, portraitX, portraitTop);
+    g.strokeStyle = frameOuter;
+    g.lineWidth = 2;
+    g.strokeRect(portraitX, portraitTop, portraitW, portraitH);
+    return ready;
+  };
+  const portraitReady = drawPortrait();
 
   // ---- Type bar ----
   const typeY = portraitTop + portraitH + 6;
@@ -407,6 +411,17 @@ function buildEnemyCardTexture(
   tex.anisotropy = 4;
   tex.needsUpdate = true;
   ENEMY_CARD_CACHE.set(cacheKey, tex);
+
+  // If a real image exists but hasn't decoded yet, schedule a one-shot
+  // repaint of just the portrait region — the rest of the card frame is
+  // already correct and doesn't need to be rebuilt.
+  if (!portraitReady && hasEnemyImage(def.id)) {
+    onEnemyImageLoad(def.id, () => {
+      drawPortrait();
+      tex.needsUpdate = true;
+    });
+  }
+
   return tex;
 }
 

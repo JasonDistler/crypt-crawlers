@@ -1,19 +1,26 @@
 // =============================================================================
-// Procedural D&D-style portraits for enemies and crawlers
+// D&D-style portraits for enemies and crawlers
 // =============================================================================
 //
-// Each `paint___(ctx, w, h)` function draws a stylized creature or character
-// onto a 2D canvas context (origin at top-left, size w × h). The output is
-// designed to read as a silhouette portrait against a moody, vignetted
-// background — enough to feel like an illustrated D&D bestiary entry.
+// Enemies that have a real artwork registered in `enemyImages.ts` use that
+// image directly. Everything else (bosses, crawlers, generic) falls back to
+// the procedural `paint___(ctx, w, h)` painters defined below, which draw
+// stylized silhouettes against a moody vignetted background.
 //
-// Cache: results are memoized as data URLs keyed by `id|w|h` so the same
-// portrait can be reused across the combat panel, crawler-select grid, and
-// the 3D enemy preview card without repainting.
+// Cache: procedural results are memoized as data URLs keyed by `id|w|h` so
+// the same portrait can be reused across the combat panel, crawler-select
+// grid, and the 3D enemy preview card without repainting.
+
+import { ENEMY_IMAGE_URLS, getEnemyImage } from '@/art/enemyImages';
 
 const CACHE = new Map<string, string>();
 
 export function enemyPortraitDataUrl(id: string, w = 256, h = 256): string {
+  // Real artwork wins: just hand back the asset URL so <img> can render it
+  // natively (with proper sizing/scaling via CSS).
+  const real = ENEMY_IMAGE_URLS[id];
+  if (real) return real;
+
   const key = `enemy:${id}:${w}x${h}`;
   const hit = CACHE.get(key);
   if (hit) return hit;
@@ -41,10 +48,56 @@ export function crawlerPortraitDataUrl(id: string, w = 256, h = 256): string {
   return url;
 }
 
-/** Paint directly onto an existing canvas context (used by canvas textures). */
-export function paintEnemy(ctx: CanvasRenderingContext2D, id: string, w: number, h: number) {
+/**
+ * Paint an enemy onto an existing canvas context (used by canvas textures).
+ * If a real artwork is registered and already loaded, it's drawn in with a
+ * "cover" fit (centered, biased toward the upper portion where the face is).
+ * Otherwise we fall back to the procedural painter and return false so the
+ * caller knows to schedule a repaint when the image finishes loading.
+ *
+ * Returns true if the final pixels are the real artwork, false otherwise.
+ */
+export function paintEnemy(
+  ctx: CanvasRenderingContext2D,
+  id: string,
+  w: number,
+  h: number,
+): boolean {
+  const img = getEnemyImage(id);
+  if (img && img.complete && img.naturalWidth > 0) {
+    drawImageCover(ctx, img, w, h);
+    return true;
+  }
   const painter = ENEMY_PAINTERS[id] ?? paintGenericEnemy;
   painter(ctx, w, h);
+  return false;
+}
+
+/**
+ * Draws a portrait-oriented image into a 0..w / 0..h box using "cover" fit:
+ * the image fills the entire box without distortion, cropping whichever
+ * dimension overflows. The vertical anchor is biased upward (0.25) so the
+ * creature's face is favored over its feet/legs.
+ */
+function drawImageCover(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  w: number,
+  h: number,
+) {
+  const iw = img.naturalWidth;
+  const ih = img.naturalHeight;
+  const scale = Math.max(w / iw, h / ih);
+  const dw = iw * scale;
+  const dh = ih * scale;
+  const dx = (w - dw) / 2;
+  const dy = (h - dh) * 0.25; // bias upward toward the face
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, w, h);
+  ctx.clip();
+  ctx.drawImage(img, dx, dy, dw, dh);
+  ctx.restore();
 }
 
 export function paintCrawler(ctx: CanvasRenderingContext2D, id: string, w: number, h: number) {
