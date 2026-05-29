@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useRunStore, remainingFoes } from '@/state/runStore';
 import { getCrawler } from '@/data/crawlers';
+import { getCrawlerPalette } from '@/data/crawlerPalette';
 import { getFloorTheme } from '@/dungeon/themes';
+import { sfx } from '@/util/sound';
 import { Minimap } from './Minimap';
 import { DeckViewer } from './DeckViewer';
 import './DungeonHud.css';
@@ -23,6 +25,7 @@ export function DungeonHud() {
   const isMoving = useRunStore((s) => s.isMoving);
 
   const crawler = crawlerId ? getCrawler(crawlerId) : null;
+  const palette = getCrawlerPalette(crawlerId);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -97,6 +100,7 @@ export function DungeonHud() {
     if (!portalWasUnlockedRef.current && portalUnlocked) {
       setPortalBanner('The portal has been opened');
       portalWasUnlockedRef.current = true;
+      sfx.portalOpens();
       const t = setTimeout(() => setPortalBanner(null), 4000);
       return () => clearTimeout(t);
     }
@@ -121,6 +125,11 @@ export function DungeonHud() {
         {floorBanner && (
           <motion.div
             className="floor-banner"
+            style={{
+              ['--banner-accent' as any]: palette.primary,
+              ['--banner-glow' as any]: palette.glow,
+              ['--banner-text' as any]: palette.accentText,
+            }}
             initial={{ y: -40, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -30, opacity: 0 }}
@@ -137,6 +146,12 @@ export function DungeonHud() {
           <motion.div
             key="portal-banner"
             className="portal-banner"
+            style={{
+              ['--banner-accent' as any]: palette.primary,
+              ['--banner-glow' as any]: palette.glow,
+              ['--banner-text' as any]: palette.accentText,
+              ['--banner-secondary' as any]: palette.secondary,
+            }}
             initial={{ y: -30, opacity: 0, scale: 0.85 }}
             animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: -20, opacity: 0, scale: 0.95 }}
@@ -144,7 +159,7 @@ export function DungeonHud() {
           >
             <div className="portal-banner-glow" />
             <div className="portal-banner-title">{portalBanner}</div>
-            <div className="portal-banner-blurb">Find the violet swirl and descend.</div>
+            <div className="portal-banner-blurb">Find the swirling sigil and descend.</div>
           </motion.div>
         )}
       </AnimatePresence>

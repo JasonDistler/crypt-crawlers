@@ -46,12 +46,20 @@ function EnemyCard({ enemy }: { enemy: EnemyInstance }) {
   const prevShield = useRef(enemy.statuses.shield ?? 0);
   const wasDead = useRef(dead);
   const [deathBurst, setDeathBurst] = useState(false);
+  // Brief red flash on the portrait when damage lands (independent of the
+  // death burst, which only fires on the killing blow). Tone may extend later
+  // to 'heal' for green flashes when an enemy is healed by a teammate.
+  const [hitFlash, setHitFlash] = useState<'damage' | null>(null);
 
   // Watch for HP / shield changes and emit floaters accordingly.
   useEffect(() => {
     const curShield = enemy.statuses.shield ?? 0;
     if (enemy.hp < prevHp.current) {
       add(`-${prevHp.current - enemy.hp}`, 'damage');
+      setHitFlash('damage');
+      // Match the floater + frame-shake cadence so the flash feels tied to
+      // the hit, not just trailing behind it.
+      setTimeout(() => setHitFlash(null), 360);
     } else if (enemy.hp > prevHp.current) {
       add(`+${enemy.hp - prevHp.current}`, 'heal');
     }
@@ -99,6 +107,7 @@ function EnemyCard({ enemy }: { enemy: EnemyInstance }) {
         tint={def.tint ?? '#5a3a52'}
         dead={dead}
         deathBurst={deathBurst}
+        hitFlash={hitFlash}
       />
       <div className="enemy-info">
         <div className="enemy-name">{def.name}{def.isBoss ? ' ★' : ''}</div>
@@ -140,11 +149,13 @@ function EnemyPortrait({
   tint,
   dead,
   deathBurst,
+  hitFlash,
 }: {
   defId: string;
   tint: string;
   dead: boolean;
   deathBurst: boolean;
+  hitFlash: 'damage' | null;
 }) {
   const portrait = useMemo(() => enemyPortraitDataUrl(defId, 256, 256), [defId]);
   return (
@@ -156,13 +167,27 @@ function EnemyPortrait({
         animate={
           deathBurst
             ? { scale: [1, 1.15, 0.6], rotate: [0, -8, 12], opacity: [1, 0.8, 0] }
+            : hitFlash === 'damage'
+            ? { scale: [1, 1.04, 0.98, 1], rotate: [0, -2.5, 2, 0], opacity: dead ? 0.35 : 1 }
             : { scale: 1, rotate: 0, opacity: dead ? 0.35 : 1 }
         }
-        transition={{ duration: deathBurst ? 0.9 : 0.3 }}
+        transition={{ duration: deathBurst ? 0.9 : hitFlash ? 0.36 : 0.3 }}
         className="enemy-portrait-img"
       />
       <div className="enemy-sprite-vignette" />
-      <AnimatePresence>{deathBurst && <DeathBurst />}</AnimatePresence>
+      <AnimatePresence>
+        {hitFlash === 'damage' && (
+          <motion.div
+            key="hit-flash"
+            className="enemy-hit-flash"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 0.85, 0] }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.36, ease: 'easeOut' }}
+          />
+        )}
+        {deathBurst && <DeathBurst />}
+      </AnimatePresence>
     </div>
   );
 }

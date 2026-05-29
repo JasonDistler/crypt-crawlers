@@ -1,9 +1,13 @@
 import { motion, AnimatePresence, useAnimationControls } from 'framer-motion';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRunStore } from '@/state/runStore';
+import { useMetaStore } from '@/state/metaStore';
 import { getCard } from '@/data/cards';
 import { getCrawler } from '@/data/crawlers';
 import { computeChain, projectedDamage } from '@/combat/manaChain';
+import { crawlerPortraitDataUrl } from '@/art/portraits';
+import { CRAWLER_PORTRAIT_FOCUS } from '@/art/crawlerImages';
+import { getCrawlerPalette } from '@/data/crawlerPalette';
 import { Card } from './Card';
 import { EnemyPanel } from './EnemyPanel';
 import './CombatScene.css';
@@ -19,8 +23,11 @@ export function CombatScene() {
   const c = useRunStore((s) => s.combat);
   const crawlerId = useRunStore((s) => s.crawlerId);
   const isElite = useRunStore((s) => s.combatIsElite);
+  const godMode = useRunStore((s) => s.godMode);
+  const reducedMotion = useMetaStore((s) => s.reducedMotion);
   const actions = useRunStore.getState();
   const crawler = crawlerId ? getCrawler(crawlerId) : null;
+  const palette = getCrawlerPalette(crawlerId);
 
   // Compute chain steps for live multiplier preview
   const chainInput = useMemo(() => {
@@ -53,8 +60,14 @@ export function CombatScene() {
 
   // ---- Player floaters: track HP / shield deltas, emit damage / heal / block popups
   const [playerFloaters, setPlayerFloaters] = useState<PlayerFloater[]>([]);
+  const [portraitFlash, setPortraitFlash] = useState<'damage' | 'heal' | null>(null);
   const prevPlayerHp = useRef(c?.hp ?? 0);
   const prevPlayerShield = useRef(c?.statuses.shield ?? 0);
+
+  const triggerPortraitFlash = (tone: 'damage' | 'heal') => {
+    setPortraitFlash(tone);
+    setTimeout(() => setPortraitFlash(null), tone === 'damage' ? 420 : 600);
+  };
 
   const pushPlayerFloater = (text: string, tone: PlayerFloater['tone']) => {
     const id = Math.random().toString(36).slice(2, 10);
@@ -70,7 +83,9 @@ export function CombatScene() {
   const shakeControls = useAnimationControls();
 
   const doShake = (magnitude: number) => {
-    // Magnitude: 0 (none) → ~14px (huge boss hit)
+    // Magnitude: 0 (none) → ~14px (huge boss hit). Reduced-motion mode skips
+    // the camera shake entirely (the flash + floater still communicate the hit).
+    if (reducedMotion) return;
     const m = Math.min(14, magnitude);
     if (m < 1) return;
     shakeControls.start({
@@ -87,8 +102,10 @@ export function CombatScene() {
       const lost = prevPlayerHp.current - c.hp;
       pushPlayerFloater(`-${lost}`, 'damage');
       doShake(Math.min(12, 3 + lost * 0.4));
+      triggerPortraitFlash('damage');
     } else if (c.hp > prevPlayerHp.current) {
       pushPlayerFloater(`+${c.hp - prevPlayerHp.current}`, 'heal');
+      triggerPortraitFlash('heal');
     }
     if (curShield > prevPlayerShield.current) {
       pushPlayerFloater(`+${curShield - prevPlayerShield.current} 🛡`, 'block');
@@ -228,37 +245,48 @@ export function CombatScene() {
 
       {/* Player status row */}
       <div className="combat-player">
-        <div className="combat-player-info">
-          <div className="combat-player-name">{crawler.name}</div>
-          <div className="combat-player-hp">
-            <div className="combat-player-hp-fill" style={{ width: `${(c.hp / c.maxHp) * 100}%` }} />
-            <span>{c.hp} / {c.maxHp}</span>
-          </div>
-          {/* Floaters anchored above the player HP bar */}
-          <div className="combat-player-floaters">
-            <AnimatePresence>
-              {playerFloaters.map((f) => (
-                <motion.div
-                  key={f.id}
-                  className={`floater floater-${f.tone}`}
-                  initial={{ y: 0, opacity: 0, scale: 0.8, x: f.dx }}
-                  animate={{ y: -70, opacity: 1, scale: 1, x: f.dx }}
-                  exit={{ opacity: 0, y: -90, scale: 0.8 }}
-                  transition={{ duration: 1.0, ease: 'easeOut' }}
-                >
-                  {f.text}
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-          <div className="combat-player-statuses">
-            {Object.entries(c.statuses).map(([k, v]) =>
-              v ? (
-                <span key={k} className={`status status-${k}`}>
-                  {statusLabel(k)} {v}
-                </span>
-              ) : null,
-            )}
+        <div className="combat-player-block">
+          <PlayerPortrait
+            crawlerId={crawler.id}
+            crawlerName={crawler.name}
+            paletteAccent={palette.primary}
+            paletteGlow={palette.glow}
+            flash={portraitFlash}
+            godMode={godMode}
+            dead={c.hp <= 0}
+          />
+          <div className="combat-player-info">
+            <div className="combat-player-name">{crawler.name}</div>
+            <div className="combat-player-hp">
+              <div className="combat-player-hp-fill" style={{ width: `${(c.hp / c.maxHp) * 100}%` }} />
+              <span>{c.hp} / {c.maxHp}</span>
+            </div>
+            {/* Floaters anchored above the player HP bar */}
+            <div className="combat-player-floaters">
+              <AnimatePresence>
+                {playerFloaters.map((f) => (
+                  <motion.div
+                    key={f.id}
+                    className={`floater floater-${f.tone}`}
+                    initial={{ y: 0, opacity: 0, scale: 0.8, x: f.dx }}
+                    animate={{ y: -70, opacity: 1, scale: 1, x: f.dx }}
+                    exit={{ opacity: 0, y: -90, scale: 0.8 }}
+                    transition={{ duration: 1.0, ease: 'easeOut' }}
+                  >
+                    {f.text}
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+            <div className="combat-player-statuses">
+              {Object.entries(c.statuses).map(([k, v]) =>
+                v ? (
+                  <span key={k} className={`status status-${k}`}>
+                    {statusLabel(k)} {v}
+                  </span>
+                ) : null,
+              )}
+            </div>
           </div>
         </div>
         <div className="combat-mana">
@@ -290,4 +318,78 @@ function statusLabel(k: string): string {
     case 'manaDrain': return '∅ Drain';
     default: return k;
   }
+}
+
+/**
+ * Player avatar panel for the combat HUD. Renders the crawler painting with:
+ *  - a frame tinted in the crawler's signature palette color,
+ *  - a red flash overlay when HP drops,
+ *  - a green pulse when HP rises (heals),
+ *  - a gold pulsing aura when god-mode is on,
+ *  - desaturation + dim when the player's HP reaches zero.
+ *
+ * The portrait `<img>` is memoized via `crawlerPortraitDataUrl` (which returns
+ * the static asset URL for any crawler with real artwork), so this component
+ * is cheap to re-render on every HP tick.
+ */
+function PlayerPortrait({
+  crawlerId,
+  crawlerName,
+  paletteAccent,
+  paletteGlow,
+  flash,
+  godMode,
+  dead,
+}: {
+  crawlerId: string;
+  crawlerName: string;
+  paletteAccent: string;
+  paletteGlow: string;
+  flash: 'damage' | 'heal' | null;
+  godMode: boolean;
+  dead: boolean;
+}) {
+  const src = useMemo(() => crawlerPortraitDataUrl(crawlerId, 256, 320), [crawlerId]);
+  const focus = CRAWLER_PORTRAIT_FOCUS[crawlerId] ?? '50% 25%';
+  return (
+    <div
+      className="player-portrait"
+      style={{
+        ['--portrait-accent' as any]: paletteAccent,
+        ['--portrait-glow' as any]: paletteGlow,
+      }}
+    >
+      <img
+        className="player-portrait-img"
+        src={src}
+        alt={crawlerName}
+        draggable={false}
+        style={{ objectPosition: focus, filter: dead ? 'grayscale(1) brightness(0.55)' : undefined }}
+      />
+      <div className="player-portrait-vignette" />
+      {godMode && <div className="player-portrait-godmode" />}
+      <AnimatePresence>
+        {flash === 'damage' && (
+          <motion.div
+            key="dmg"
+            className="player-portrait-flash player-portrait-flash-damage"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 0.75, 0] }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.42, ease: 'easeOut' }}
+          />
+        )}
+        {flash === 'heal' && (
+          <motion.div
+            key="heal"
+            className="player-portrait-flash player-portrait-flash-heal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 0.65, 0] }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
 }

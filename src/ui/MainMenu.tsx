@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useRunStore } from '@/state/runStore';
 import { useMetaStore } from '@/state/metaStore';
 import { Codex } from './Codex';
+import { SettingsPanel } from './SettingsPanel';
 import './MainMenu.css';
 import './Codex.css';
 
@@ -12,6 +13,7 @@ export function MainMenu() {
   const totalXp = useMetaStore((s) => s.totalXp);
   const unlockedCrawlers = useMetaStore((s) => s.unlockedCrawlers);
   const [codexOpen, setCodexOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
     <div className="menu">
@@ -22,8 +24,10 @@ export function MainMenu() {
         <div className="menu-buttons">
           <button className="big-button menu-start" onClick={goToSelect}>Begin a Run</button>
           <button onClick={() => setCodexOpen(true)}>Codex</button>
+          <button onClick={() => setSettingsOpen(true)}>Settings</button>
         </div>
         {codexOpen && <Codex onClose={() => setCodexOpen(false)} />}
+        {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
         <div className="menu-meta">
           <div>Runs: {totalRuns}</div>
           <div>Deepest floor: {bestFloor}</div>

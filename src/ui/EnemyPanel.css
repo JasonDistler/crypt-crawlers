@@ -94,6 +94,22 @@
     linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0) 30%, rgba(0,0,0,0.4));
 }
 
+/* Bright red overlay that briefly washes over the portrait when damage
+   lands. Screen blend keeps the underlying art legible through the flash. */
+.enemy-hit-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background: radial-gradient(
+    circle at 50% 45%,
+    rgba(255, 60, 60, 0.95) 0%,
+    rgba(200, 30, 30, 0.55) 55%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  z-index: 4;
+}
+
 .enemy-boss .enemy-sprite-portrait {
   border-color: #c4922b;
   box-shadow:

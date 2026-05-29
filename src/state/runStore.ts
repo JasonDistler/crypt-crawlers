@@ -223,6 +223,9 @@ export const useRunStore = create<RunState>((set, get) => ({
     const seed = Date.now() & 0xffffffff;
     const map = generateFloor({ floor: 1, seed });
     updateVisibility(map, map.spawn.x, map.spawn.y, 5);
+    if (useMetaStore.getState().ambientOn) {
+      sfx.ambient('dungeon');
+    }
     set({
       mode: 'dungeon',
       crawlerId,
@@ -246,7 +249,10 @@ export const useRunStore = create<RunState>((set, get) => ({
     });
   },
 
-  toMenu: () => set({ mode: 'menu' }),
+  toMenu: () => {
+    sfx.ambient('off');
+    set({ mode: 'menu' });
+  },
   goToCrawlerSelect: () => set({ mode: 'crawler-select' }),
 
   setMoving: (m) => set({ isMoving: m }),
@@ -268,7 +274,13 @@ export const useRunStore = create<RunState>((set, get) => ({
   // Combat entry
   // ---------------------------------------------------------------------------
   _enterCombat: (encounterId, isBoss, cellX, cellY, isElite = false) => {
+    if (isBoss) {
+      // Lower-pitched, longer growl for boss intros instead of the generic
+      // combat-start swell; both stack so the player still gets the punch.
+      sfx.bossEntry();
+    }
     sfx.combatStart();
+    sfx.ambient('combat');
     const { deck, hp, maxHp, crawlerId } = get();
     const crawler = getCrawler(crawlerId!);
     const enemyIds = encounterId.split(',');
@@ -400,6 +412,8 @@ export const useRunStore = create<RunState>((set, get) => ({
   // ---------------------------------------------------------------------------
   _endCombatVictory: () => {
     sfx.victory();
+    // Return to dungeon ambience after the victory stinger fades.
+    sfx.ambient('dungeon');
     const s = get();
     if (!s.combat) return;
 
@@ -447,6 +461,7 @@ export const useRunStore = create<RunState>((set, get) => ({
 
   _endCombatDefeat: () => {
     sfx.defeat();
+    sfx.ambient('off');
     const s = get();
     const meta = useMetaStore.getState();
     meta.addXp(Math.floor(s.xp / 2));
@@ -531,9 +546,9 @@ export const useRunStore = create<RunState>((set, get) => ({
     const cell = s.map.cells[s.py]?.[s.px];
     if (cell?.kind !== 'shrine' || cell.cleared) return;
     cell.cleared = true;
-    sfx.chest();
     if (cell.shrineKind === 'altar') {
       // Altar: sacrifice 3 current HP for +5 max HP permanently this run.
+      sfx.altar();
       const sacrifice = Math.min(3, Math.max(1, s.hp - 1));
       const newMaxHp = s.maxHp + 5;
       const newHp = Math.max(1, s.hp - sacrifice + 5); // also bumps current
@@ -545,6 +560,8 @@ export const useRunStore = create<RunState>((set, get) => ({
       );
     } else {
       // Heal: restore a chunk of HP
+      sfx.shrine();
+      sfx.heal();
       const amount = Math.round(s.maxHp * 0.35);
       const newHp = Math.min(s.maxHp, s.hp + amount);
       set({ hp: newHp });
@@ -576,6 +593,7 @@ export const useRunStore = create<RunState>((set, get) => ({
       const meta = useMetaStore.getState();
       meta.addXp(s.xp);
       meta.registerRun(s.map.floor, s.bossesKilled, s.cardsSeenThisRun);
+      sfx.ambient('off');
       set({ mode: 'victory' });
       return;
     }
@@ -667,7 +685,7 @@ function stepRelative(
       return;
     }
     const newHp = Math.max(0, s.hp - damage);
-    sfx.defeat(); // sharp metallic-y clank stands in for "trap snap"
+    sfx.playerHit();
     if (newHp <= 0) {
       set({ hp: 0 });
       setTimeout(() => useRunStore.getState()._endCombatDefeat(), 200);
@@ -842,6 +860,8 @@ function resolveTurn(
       } else {
         combat.hp = Math.max(0, combat.hp - dmg);
         combat.log.push(`${def.name} hits for ${dmg}${absorbed ? ` (${absorbed} blocked)` : ''}`);
+        if (dmg > 0) sfx.playerHit();
+        else if (absorbed > 0) sfx.block();
       }
     } else if (intent.kind === 'defend' && intent.block) {
       e.statuses.shield = (e.statuses.shield ?? 0) + intent.block;
@@ -877,6 +897,7 @@ function resolveTurn(
     } else {
       combat.hp = Math.max(0, combat.hp - playerDot);
       combat.log.push(`You suffer ${playerDot} (bleed/burn)`);
+      sfx.playerHit();
     }
   }
   if (playerBleed > 0) combat.statuses.bleed = playerBleed - 1;

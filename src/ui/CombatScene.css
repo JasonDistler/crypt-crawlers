@@ -196,10 +196,93 @@
   background: rgba(10,5,12,0.7);
 }
 
+/* Left cluster: portrait + name/HP/status info side-by-side. */
+.combat-player-block {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0; /* allow info column to ellipsis when crowded */
+}
+
 .combat-player-info {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
+}
+
+/* ---- Player portrait ----------------------------------------------------- */
+.player-portrait {
+  position: relative;
+  width: 96px;
+  height: 120px;
+  flex: 0 0 auto;
+  background: #0a0610;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid var(--portrait-accent, #c4922b);
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.7),
+    0 0 18px var(--portrait-glow, rgba(232, 196, 108, 0.45)),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.player-portrait-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  transition: filter 0.4s ease;
+}
+
+.player-portrait-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 30%, transparent 55%, rgba(0,0,0,0.55) 100%),
+    linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0) 25%, rgba(0,0,0,0.5));
+}
+
+.player-portrait-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.player-portrait-flash-damage {
+  background: radial-gradient(circle at 50% 50%, rgba(255, 60, 60, 0.95) 0%, rgba(180, 20, 30, 0.55) 60%, rgba(0,0,0,0) 100%);
+}
+
+.player-portrait-flash-heal {
+  background: radial-gradient(circle at 50% 50%, rgba(120, 255, 160, 0.85) 0%, rgba(60, 200, 100, 0.45) 60%, rgba(0,0,0,0) 100%);
+}
+
+/* God-mode aura: pulsing gold ring layered on the inside of the frame. */
+.player-portrait-godmode {
+  position: absolute;
+  inset: -2px;
+  border-radius: 6px;
+  pointer-events: none;
+  box-shadow:
+    0 0 24px 4px rgba(255, 210, 100, 0.65),
+    inset 0 0 16px rgba(255, 220, 130, 0.55);
+  border: 2px solid rgba(255, 220, 140, 0.85);
+  animation: player-portrait-godmode-pulse 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes player-portrait-godmode-pulse {
+  from {
+    box-shadow:
+      0 0 18px 2px rgba(255, 210, 100, 0.5),
+      inset 0 0 14px rgba(255, 220, 130, 0.45);
+  }
+  to {
+    box-shadow:
+      0 0 30px 6px rgba(255, 220, 140, 0.85),
+      inset 0 0 22px rgba(255, 235, 160, 0.65);
+  }
 }
 
 .combat-player-name {

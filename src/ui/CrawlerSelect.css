@@ -42,7 +42,7 @@
 .crawler-portrait {
   position: relative;
   align-self: center;
-  width: 168px;
+  width: 240px;
   height: 200px;
   background: #0a0610;
   border: 3px solid #5a4a28;
@@ -59,7 +59,8 @@
   height: 100%;
   display: block;
   object-fit: cover;
-  image-rendering: -webkit-optimize-contrast;
+  object-position: 50% 25%;
+  image-rendering: auto;
 }
 
 .crawler-portrait-frame {

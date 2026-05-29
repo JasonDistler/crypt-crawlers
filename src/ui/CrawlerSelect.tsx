@@ -4,6 +4,7 @@ import { useRunStore } from '@/state/runStore';
 import { useMetaStore } from '@/state/metaStore';
 import { getCard } from '@/data/cards';
 import { crawlerPortraitDataUrl } from '@/art/portraits';
+import { CRAWLER_PORTRAIT_FOCUS } from '@/art/crawlerImages';
 import './CrawlerSelect.css';
 
 export function CrawlerSelect() {
@@ -27,6 +28,7 @@ export function CrawlerSelect() {
                   src={crawlerPortraitDataUrl(c.id, 256, 320)}
                   alt={c.name}
                   draggable={false}
+                  style={{ objectPosition: CRAWLER_PORTRAIT_FOCUS[c.id] ?? '50% 25%' }}
                 />
                 <div className="crawler-portrait-frame" />
               </div>

@@ -12,6 +12,7 @@
 // grid, and the 3D enemy preview card without repainting.
 
 import { ENEMY_IMAGE_URLS, getEnemyImage } from '@/art/enemyImages';
+import { CRAWLER_IMAGE_URLS } from '@/art/crawlerImages';
 
 const CACHE = new Map<string, string>();
 
@@ -35,6 +36,11 @@ export function enemyPortraitDataUrl(id: string, w = 256, h = 256): string {
 }
 
 export function crawlerPortraitDataUrl(id: string, w = 256, h = 256): string {
+  // Real artwork wins: hand back the asset URL so the consuming <img> can
+  // render it natively with whatever object-fit/position the UI chooses.
+  const real = CRAWLER_IMAGE_URLS[id];
+  if (real) return real;
+
   const key = `crawler:${id}:${w}x${h}`;
   const hit = CACHE.get(key);
   if (hit) return hit;

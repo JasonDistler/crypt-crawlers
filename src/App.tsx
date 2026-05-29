@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRunStore } from '@/state/runStore';
+import { useMetaStore } from '@/state/metaStore';
 import { MainMenu } from '@/ui/MainMenu';
 import { CrawlerSelect } from '@/ui/CrawlerSelect';
 import { DungeonScene } from '@/dungeon/DungeonScene';
@@ -10,6 +11,7 @@ import { ChestScreen } from '@/ui/ChestScreen';
 import { GameOverScreen, VictoryScreen } from '@/ui/EndScreens';
 import { ErrorBoundary } from '@/ui/ErrorBoundary';
 import { DebugOverlay } from '@/ui/DebugOverlay';
+import { SettingsPanel } from '@/ui/SettingsPanel';
 import { sfx } from '@/util/sound';
 
 import '@/ui/Card.css';
@@ -43,6 +45,10 @@ const LONGEST_CHEAT_LEN = CHEAT_CODES.reduce((m, [c]) => Math.max(m, c.length), 
 export function App() {
   const mode = useRunStore((s) => s.mode);
   const godMode = useRunStore((s) => s.godMode);
+  const masterVolume = useMetaStore((s) => s.masterVolume);
+  const sfxVolume = useMetaStore((s) => s.sfxVolume);
+  const musicVolume = useMetaStore((s) => s.musicVolume);
+  const ambientOn = useMetaStore((s) => s.ambientOn);
 
   // Resume audio context on first user gesture (browser autoplay policy).
   useEffect(() => {
@@ -59,6 +65,25 @@ export function App() {
     };
   }, []);
 
+  // Push volume changes into the audio engine whenever a slider moves.
+  useEffect(() => {
+    sfx.setVolumes(masterVolume, sfxVolume, musicVolume);
+  }, [masterVolume, sfxVolume, musicVolume]);
+
+  // Honor the ambient-music toggle live: if the player flips it off mid-run,
+  // silence the drone; if they flip it on while in dungeon/combat, start it.
+  useEffect(() => {
+    if (!ambientOn) {
+      sfx.ambient('off');
+      return;
+    }
+    if (mode === 'dungeon' || mode === 'reward' || mode === 'chest') {
+      sfx.ambient('dungeon');
+    } else if (mode === 'combat') {
+      sfx.ambient('combat');
+    }
+  }, [ambientOn, mode]);
+
   // ---------- Cheat-code keyboard handler ----------
   // Refs hold the live cheat-input state so the keydown handler can stay
   // attached for the lifetime of the component without churning on every
@@ -68,6 +93,10 @@ export function App() {
   const cheatBufferRef = useRef('');
   const cheatTimeoutRef = useRef<number | null>(null);
   const [cheatBufferDisplay, setCheatBufferDisplay] = useState<string | null>(null);
+
+  // Global settings modal — accessible from any mode via the corner gear icon.
+  // Mid-run players can tweak volume / ambient / motion without losing progress.
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     function cancelCheat() {
@@ -165,6 +194,22 @@ export function App() {
           🛡 GOD
         </div>
       )}
+
+      {/* Global settings gear: hidden during the main menu (which has its own
+          Settings button) but available in dungeon, combat, and end screens
+          so the player can adjust audio without resetting their run. */}
+      {mode !== 'menu' && (
+        <button
+          type="button"
+          className="settings-gear"
+          onClick={() => setSettingsOpen(true)}
+          aria-label="Open settings"
+          title="Settings"
+        >
+          ⚙
+        </button>
+      )}
+      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
     </div>
   );
 }
